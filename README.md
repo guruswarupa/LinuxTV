@@ -4,6 +4,41 @@ LinuxTV is a TV-first app launcher for Linux systems.
 
 It turns a normal PC connected to a TV into a simpler, more living-room-friendly experience. Instead of dealing with a traditional desktop, mouse, tiny windows, and scattered apps, LinuxTV gives you a fullscreen home screen that is easier to navigate from the couch.
 
+<div align="center">
+
+<a href="https://sourceforge.net/projects/linuxtv/files/latest/download" target="_blank">
+  <img 
+    src="https://img.shields.io/badge/Download-LinuxTV-2ea44f?style=for-the-badge&logo=linux&logoColor=white" 
+    alt="Download LinuxTV"
+  />
+</a>
+
+<a href="https://sourceforge.net/projects/linuxtv/" target="_blank">
+  <img 
+    src="https://img.shields.io/badge/View-Project-orange?style=for-the-badge&logo=sourceforge&logoColor=white" 
+    alt="View Project"
+  />
+</a>
+
+<br><br>
+
+<a href="https://sourceforge.net/projects/linuxtv/files/latest/download">
+  <img 
+    alt="Download LinuxTV" 
+    src="https://sourceforge.net/sflogo.php?type=18&group_id=4080433"
+    width="220"
+  >
+</a>
+
+<br><br>
+
+<img 
+  src="https://img.shields.io/sourceforge/dt/linuxtv.svg?style=for-the-badge" 
+  alt="SourceForge Downloads"
+/>
+
+</div>
+
 ## What It Is
 
 LinuxTV is meant for people who use a Linux machine as a media box, TV computer, kiosk-style entertainment system, or family-friendly big-screen setup.
