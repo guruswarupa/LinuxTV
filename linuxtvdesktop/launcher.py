@@ -238,49 +238,47 @@ def dialog_metrics():
     if compact:
         return {
             "compact": True,
-            "add_width": 520,
-            "confirm_width": 460,
-            "settings_width": 980,
-            "settings_height": 680,
+            "add_width": 420,
+            "confirm_width": 380,
+            "settings_width": 760,
             "dialog_margin_x": 28,
-            "dialog_margin_y": 26,
-            "dialog_spacing": 16,
+            "dialog_margin_y": 24,
+            "dialog_spacing": 14,
             "title_font": 24,
             "section_font": 18,
-            "subtitle_font": 14,
-            "helper_font": 12,
-            "input_min_height": 46,
+            "subtitle_font": 15,
+            "helper_font": 13,
+            "input_min_height": 38,
             "nav_spacing": 12,
-            "status_padding_v": 12,
-            "status_padding_h": 16,
+            "status_padding_v": 10,
+            "status_padding_h": 14,
             "field_font_css": 14,
             "button_font_css": 14,
-            "button_min_width": 110,
-            "button_padding_v": 13,
-            "button_padding_h": 20,
+            "button_min_width": 85,
+            "button_padding_v": 9,
+            "button_padding_h": 18,
         }
     return {
         "compact": False,
-        "add_width": 620,
-        "confirm_width": 540,
-        "settings_width": 1080,
-        "settings_height": 740,
+        "add_width": 480,
+        "confirm_width": 440,
+        "settings_width": 840,
         "dialog_margin_x": 32,
-        "dialog_margin_y": 30,
-        "dialog_spacing": 18,
+        "dialog_margin_y": 28,
+        "dialog_spacing": 16,
         "title_font": 28,
         "section_font": 20,
-        "subtitle_font": 15,
+        "subtitle_font": 17,
         "helper_font": 14,
-        "input_min_height": 50,
+        "input_min_height": 42,
         "nav_spacing": 14,
-        "status_padding_v": 14,
-        "status_padding_h": 18,
-        "field_font_css": 16,
-        "button_font_css": 16,
-        "button_min_width": 120,
-        "button_padding_v": 14,
-        "button_padding_h": 22,
+        "status_padding_v": 12,
+        "status_padding_h": 16,
+        "field_font_css": 15,
+        "button_font_css": 15,
+        "button_min_width": 95,
+        "button_padding_v": 11,
+        "button_padding_h": 20,
     }
 
 
@@ -288,210 +286,236 @@ def dialog_stylesheet(metrics=None):
     metrics = metrics or dialog_metrics()
     stylesheet = """
         QDialog {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(24, 30, 38, 0.98), stop:1 rgba(16, 20, 26, 0.99));
-            border: 2px solid rgba(88, 96, 105, 0.4);
-            border-radius: 28px;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(30, 41, 59, 0.98), stop:1 rgba(15, 23, 42, 0.99));
+            border: 1px solid rgba(100, 116, 139, 0.25);
+            border-radius: 12px;
         }
         QLabel#dialogTitle {
-            color: #f6f8fa;
-            padding-bottom: 4px;
+            color: #f8fafc;
+            padding-top: 0px;
+            padding-bottom: 6px;
+            margin-top: 0px;
+            margin-bottom: 0px;
+            font-size: __TITLE_FONT__px;
+            font-weight: 700;
         }
         QLabel#dialogSection {
-            color: #eef1f5;
-            padding-top: 12px;
-            padding-bottom: 2px;
-            font-weight: 700;
-            letter-spacing: 0.3px;
+            color: #f1f5f9;
+            padding-top: 6px;
+            padding-bottom: 4px;
+            margin-top: 0px;
+            font-weight: 600;
+            font-size: __SECTION_FONT__px;
         }
         QLabel#dialogSubtitle {
-            color: #9aa3af;
+            color: #94a3b8;
+            padding-top: 2px;
             padding-bottom: 6px;
+            margin-bottom: 0px;
+            line-height: 1.4;
+            font-size: __SUBTITLE_FONT__px;
         }
         QLabel#dialogFieldLabel {
-            color: #d1d5de;
-            font-weight: 600;
-            padding-top: 8px;
-            padding-bottom: 4px;
+            color: #cbd5e1;
+            font-weight: 500;
+            padding-top: 6px;
+            padding-bottom: 3px;
+            margin-top: 0px;
+            font-size: __FIELD_FONT__px;
         }
         QLabel#dialogHelper {
-            color: #7a8290;
-            padding-top: 6px;
+            color: #64748b;
+            padding-top: 3px;
+            font-size: __HELPER_FONT__px;
+            line-height: 1.3;
         }
         QLabel#dialogStatus {
-            color: #c5d0dc;
-            background-color: rgba(26, 32, 40, 0.85);
-            border: 1px solid rgba(88, 96, 105, 0.35);
-            border-radius: 16px;
+            color: #f1f5f9;
+            background: rgba(51, 65, 85, 0.6);
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            border-radius: 6px;
             padding: __STATUS_PADDING_V__px __STATUS_PADDING_H__px;
+            font-size: __HELPER_FONT__px;
         }
         QLineEdit, QComboBox {
-            background-color: rgba(18, 23, 30, 0.92);
-            color: #e8ecf1;
-            border: 2px solid rgba(88, 96, 105, 0.45);
-            border-radius: 18px;
-            padding: __BUTTON_PADDING_V__px 18px;
-            min-height: 26px;
+            background: rgba(15, 23, 42, 0.7);
+            color: #f1f5f9;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 6px;
+            padding: 10px 14px;
+            min-height: 16px;
             font-size: __FIELD_FONT__px;
-            selection-background-color: #58a6ff;
-            selection-color: #ffffff;
+            selection-background-color: rgba(59, 130, 246, 0.3);
+            selection-color: #f8fafc;
         }
         QLineEdit:focus, QComboBox:focus {
-            border: 2px solid #58a6ff;
-            background-color: rgba(22, 28, 36, 0.95);
+            border: 1px solid #3b82f6;
+            background: rgba(15, 23, 42, 0.85);
         }
         QLineEdit:hover, QComboBox:hover {
-            border: 2px solid rgba(88, 166, 255, 0.5);
+            border: 1px solid rgba(100, 116, 139, 0.6);
+            background: rgba(15, 23, 42, 0.8);
         }
         QComboBox::drop-down {
             border: none;
-            width: 32px;
+            width: 24px;
         }
         QComboBox::down-arrow {
-            width: 12px;
-            height: 12px;
+            image: none;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 5px solid #94a3b8;
+            width: 0;
+            height: 0;
+        }
+        QComboBox::down-arrow:hover {
+            border-top-color: #f1f5f9;
         }
         QComboBox QAbstractItemView {
-            background-color: rgba(24, 30, 38, 0.98);
-            color: #e8ecf1;
-            border: 2px solid rgba(88, 96, 105, 0.45);
-            border-radius: 12px;
-            selection-background-color: #58a6ff;
-            selection-color: #ffffff;
-            alternate-background-color: rgba(22, 28, 34, 0.95);
-            padding: 4px;
+            background: rgba(15, 23, 42, 0.98);
+            color: #f1f5f9;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 6px;
+            selection-background-color: rgba(59, 130, 246, 0.3);
+            selection-color: #f8fafc;
+            alternate-background-color: rgba(30, 41, 59, 0.6);
+            padding: 2px;
         }
         QComboBox QAbstractItemView::item {
-            background-color: rgba(24, 30, 38, 0.95);
-            color: #e8ecf1;
-            padding: 10px 12px;
-            border-radius: 8px;
-            margin: 2px;
+            background: transparent;
+            color: #f1f5f9;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 1px;
         }
         QComboBox QAbstractItemView::item:selected {
-            background-color: #58a6ff;
-            color: #ffffff;
+            background: rgba(59, 130, 246, 0.3);
+            color: #f8fafc;
         }
         QComboBox QAbstractItemView::item:hover {
-            background-color: rgba(56, 64, 74, 0.9);
-            color: #e8ecf1;
+            background: rgba(71, 85, 105, 0.5);
+            color: #f1f5f9;
         }
         QComboBox QLineEdit {
-            background-color: transparent;
-            color: #e8ecf1;
+            background: transparent;
+            color: #f1f5f9;
             border: none;
-            selection-background-color: #58a6ff;
-            selection-color: #ffffff;
+            selection-background-color: rgba(59, 130, 246, 0.3);
+            selection-color: #f8fafc;
         }
         QPushButton[tileVariant="dialogSecondary"] {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(52, 60, 68, 0.92), stop:1 rgba(44, 51, 58, 0.95));
-            color: #d4dae2;
-            border: 2px solid rgba(88, 96, 105, 0.45);
-            border-radius: 18px;
+            background: rgba(51, 65, 85, 0.6);
+            color: #e2e8f0;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 6px;
+            padding: __BUTTON_PADDING_V__px __BUTTON_PADDING_H__px;
+            min-width: __BUTTON_MIN_WIDTH__px;
+            font-size: __BUTTON_FONT__px;
+            font-weight: 500;
+        }
+        QPushButton[tileVariant="dialogSecondary"][sectionNav="true"] {
+            padding: 8px 16px;
+            min-width: 100px;
+        }
+        QPushButton[tileVariant="dialogSecondary"]:hover {
+            background: rgba(71, 85, 105, 0.7);
+            border: 1px solid rgba(100, 116, 139, 0.6);
+            color: #f1f5f9;
+        }
+        QPushButton[tileVariant="dialogSecondary"][sectionNav="true"]:hover {
+            background: rgba(59, 130, 246, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.6);
+            color: #f8fafc;
+        }
+        QPushButton[tileVariant="dialogSecondary"]:focus {
+            border: 1px solid #3b82f6;
+            outline: none;
+            background: rgba(59, 130, 246, 0.2);
+        }
+        QPushButton[tileVariant="dialogSecondary"][sectionNav="true"]:focus {
+            background: rgba(59, 130, 246, 0.4);
+            border: 1px solid #3b82f6;
+            color: #f8fafc;
+        }
+        QPushButton[tileVariant="dialogSecondary"]:pressed {
+            background: rgba(30, 41, 59, 0.9);
+        }
+        QPushButton[tileVariant="accent"] {
+            background: rgba(16, 185, 129, 0.8);
+            color: #f8fafc;
+            border: 1px solid rgba(52, 211, 153, 0.5);
+            border-radius: 6px;
             padding: __BUTTON_PADDING_V__px __BUTTON_PADDING_H__px;
             min-width: __BUTTON_MIN_WIDTH__px;
             font-size: __BUTTON_FONT__px;
             font-weight: 600;
         }
-        QPushButton[tileVariant="dialogSecondary"][sectionNav="true"] {
-            padding: 14px 22px;
-            min-width: 140px;
-        }
-        QPushButton[tileVariant="dialogSecondary"]:hover {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(62, 70, 78, 0.95), stop:1 rgba(54, 62, 70, 0.95));
-            border: 2px solid rgba(100, 110, 120, 0.6);
-            color: #e8ecf1;
-        }
-        QPushButton[tileVariant="dialogSecondary"][sectionNav="true"]:hover {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #58a6ff, stop:1 #2178f0);
-            border: 2px solid #58a6ff;
-            color: #ffffff;
-        }
-        QPushButton[tileVariant="dialogSecondary"]:focus {
-            border: 2px solid #58a6ff;
-            outline: none;
-        }
-        QPushButton[tileVariant="dialogSecondary"][sectionNav="true"]:focus {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(36, 116, 240, 0.35), stop:1 rgba(26, 92, 196, 0.4));
-            border: 2px solid #58a6ff;
-            color: #ffffff;
-        }
-        QPushButton[tileVariant="accent"] {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #28943e, stop:1 #1f8532);
-            color: #ffffff;
-            border: 2px solid #32a846;
-            border-radius: 18px;
-            padding: __BUTTON_PADDING_V__px __BUTTON_PADDING_H__px;
-            min-width: __BUTTON_MIN_WIDTH__px;
-            font-size: __BUTTON_FONT__px;
-            font-weight: 700;
-        }
         QPushButton[tileVariant="accent"]:hover {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #32a846, stop:1 #28943e);
-            border: 2px solid #3fb950;
+            background: rgba(52, 211, 153, 0.9);
+            border: 1px solid rgba(110, 231, 183, 0.6);
         }
         QPushButton[tileVariant="accent"]:focus {
-            border: 2px solid #58a6ff;
+            border: 1px solid #3b82f6;
             outline: none;
         }
+        QPushButton[tileVariant="accent"]:pressed {
+            background: rgba(5, 150, 105, 0.95);
+        }
         QPushButton[tileVariant="danger"] {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #e03e3a, stop:1 #c42e2a);
-            color: #ffffff;
-            border: 2px solid #f04e45;
-            border-radius: 18px;
+            background: rgba(239, 68, 68, 0.8);
+            color: #f8fafc;
+            border: 1px solid rgba(248, 113, 113, 0.5);
+            border-radius: 6px;
             padding: __BUTTON_PADDING_V__px __BUTTON_PADDING_H__px;
             min-width: __BUTTON_MIN_WIDTH__px;
             font-size: __BUTTON_FONT__px;
-            font-weight: 700;
+            font-weight: 600;
         }
         QPushButton[tileVariant="danger"]:hover {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #f04e45, stop:1 #e03e3a);
-            border: 2px solid #ff6b63;
+            background: rgba(248, 113, 113, 0.9);
+            border: 1px solid rgba(252, 165, 165, 0.6);
         }
         QPushButton[tileVariant="danger"]:focus {
-            border: 2px solid #58a6ff;
+            border: 1px solid #3b82f6;
             outline: none;
         }
+        QPushButton[tileVariant="danger"]:pressed {
+            background: rgba(220, 38, 38, 0.95);
+        }
         QSlider::groove:horizontal {
-            background: rgba(52, 60, 68, 0.6);
-            border: 1px solid rgba(88, 96, 105, 0.4);
-            height: 8px;
-            border-radius: 4px;
+            background: rgba(51, 65, 85, 0.7);
+            border: 1px solid rgba(71, 85, 105, 0.4);
+            height: 4px;
+            border-radius: 2px;
         }
         QSlider::handle:horizontal {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #58a6ff, stop:1 #2178f0);
-            border: 2px solid #ffffff;
-            width: 22px;
-            height: 22px;
-            margin: -8px 0;
-            border-radius: 11px;
+            background: #3b82f6;
+            border: 2px solid #1e293b;
+            width: 14px;
+            height: 14px;
+            margin: -5px 0;
+            border-radius: 7px;
         }
         QSlider::handle:horizontal:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #68b6ff, stop:1 #3188ff);
+            background: #60a5fa;
         }
         QSlider::sub-page:horizontal {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #58a6ff, stop:1 #2178f0);
-            border-radius: 4px;
+            background: #3b82f6;
+            border-radius: 2px;
         }
     """
     replacements = {
+        "__TITLE_FONT__": str(metrics["title_font"]),
+        "__SECTION_FONT__": str(metrics["section_font"]),
+        "__SUBTITLE_FONT__": str(metrics["subtitle_font"]),
+        "__FIELD_FONT__": str(metrics["field_font_css"]),
+        "__HELPER_FONT__": str(metrics["helper_font"]),
+        "__BUTTON_FONT__": str(metrics["button_font_css"]),
         "__STATUS_PADDING_V__": str(metrics["status_padding_v"]),
         "__STATUS_PADDING_H__": str(metrics["status_padding_h"]),
         "__BUTTON_PADDING_V__": str(metrics["button_padding_v"]),
         "__BUTTON_PADDING_H__": str(metrics["button_padding_h"]),
-        "__FIELD_FONT__": str(metrics["field_font_css"]),
-        "__BUTTON_FONT__": str(metrics["button_font_css"]),
         "__BUTTON_MIN_WIDTH__": str(metrics["button_min_width"]),
     }
     for token, value in replacements.items():
@@ -2487,13 +2511,13 @@ class ParallaxBackground(QWidget):
         # Create animated gradient based on scroll position
         gradient = QLinearGradient(0, 0, 0, self.height())
         
-        # Subtle color shifts based on scroll
+        # Subtle color shifts based on scroll using dark gray slate theme
         offset = (self.scroll_position % 1000) / 1000.0
         
-        gradient.setColorAt(0.0, QColor(10, 14, 20))
-        gradient.setColorAt(0.3 + offset * 0.1, QColor(15, 20, 25))
-        gradient.setColorAt(0.7 + offset * 0.1, QColor(13, 17, 23))
-        gradient.setColorAt(1.0, QColor(10, 14, 20))
+        gradient.setColorAt(0.0, QColor(15, 23, 42))
+        gradient.setColorAt(0.3 + offset * 0.1, QColor(30, 41, 59))
+        gradient.setColorAt(0.7 + offset * 0.1, QColor(51, 65, 85))
+        gradient.setColorAt(1.0, QColor(15, 23, 42))
         
         painter.fillRect(self.rect(), gradient)
         painter.end()
@@ -2513,11 +2537,11 @@ class AddItemDialog(QDialog):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(metrics["dialog_margin_x"], metrics["dialog_margin_y"], metrics["dialog_margin_x"], metrics["dialog_margin_y"])
-        layout.setSpacing(metrics["dialog_spacing"])
+        layout.setSpacing(14)
 
-        title = QLabel(title_text)
-        title.setObjectName("dialogTitle")
-        title.setFont(QFont("Sans Serif", metrics["title_font"], QFont.Bold))
+        title = QLabel("Add Launcher")
+        title.setObjectName("dialogSection")
+        title.setFont(QFont("Sans Serif", metrics["section_font"], QFont.Bold))
         layout.addWidget(title)
 
         subtitle = QLabel("Create a launcher for an installed app command or a website.")
@@ -2560,6 +2584,7 @@ class AddItemDialog(QDialog):
 
         button_row = QHBoxLayout()
         button_row.addStretch(1)
+        button_row.setSpacing(metrics["nav_spacing"])
 
         cancel_button = QPushButton("Cancel")
         cancel_button.setProperty("tileVariant", "dialogSecondary")
@@ -2609,11 +2634,11 @@ class ConfirmDialog(QDialog):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(metrics["dialog_margin_x"], metrics["dialog_margin_y"], metrics["dialog_margin_x"], metrics["dialog_margin_y"])
-        layout.setSpacing(metrics["dialog_spacing"])
+        layout.setSpacing(14)
 
-        title = QLabel(title_text)
-        title.setObjectName("dialogTitle")
-        title.setFont(QFont("Sans Serif", metrics["title_font"], QFont.Bold))
+        title = QLabel("Confirm")
+        title.setObjectName("dialogSection")
+        title.setFont(QFont("Sans Serif", metrics["section_font"], QFont.Bold))
         layout.addWidget(title)
 
         body = QLabel(body_text)
@@ -2624,6 +2649,7 @@ class ConfirmDialog(QDialog):
 
         button_row = QHBoxLayout()
         button_row.addStretch(1)
+        button_row.setSpacing(metrics["nav_spacing"])
 
         cancel_button = QPushButton("Cancel")
         cancel_button.setProperty("tileVariant", "dialogSecondary")
@@ -2657,7 +2683,6 @@ class NetworkDialog(QDialog):
         self.setWindowTitle("Network Settings")
         self.setModal(True)
         self.setFixedWidth(metrics["settings_width"])
-        self.setFixedHeight(metrics["settings_height"])
 
         wifi_networks = wifi_networks or []
         self.wifi_refresh_callback = wifi_refresh_callback
@@ -2669,48 +2694,32 @@ class NetworkDialog(QDialog):
         self.wifi_scan_finished.connect(self.handle_wifi_scan_finished)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2, metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2)
-        layout.setSpacing(metrics["dialog_spacing"])
-
-        title = QLabel("Network Settings")
-        title.setObjectName("dialogTitle")
-        title.setFont(QFont("Sans Serif", metrics["title_font"], QFont.Bold))
-        layout.addWidget(title)
-
-        # Separator line
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setStyleSheet("background-color: rgba(88, 96, 105, 0.3); border: none;")
-        layout.addWidget(separator)
-
-        wifi_panel = QWidget()
-        wifi_layout = QVBoxLayout(wifi_panel)
-        wifi_layout.setContentsMargins(0, 0, 0, 0)
-        wifi_layout.setSpacing(metrics["dialog_spacing"])
+        layout.setContentsMargins(metrics["dialog_margin_x"], metrics["dialog_margin_y"], metrics["dialog_margin_x"], metrics["dialog_margin_y"])
+        layout.setSpacing(12)
 
         wifi_title = QLabel("Wi-Fi")
         wifi_title.setObjectName("dialogSection")
         wifi_title.setFont(QFont("Sans Serif", metrics["section_font"], QFont.Bold))
-        wifi_layout.addWidget(wifi_title)
+        layout.addWidget(wifi_title)
 
         wifi_subtitle = QLabel("Scan for nearby networks, enter a password if needed, and connect without leaving LinuxTV.")
         wifi_subtitle.setObjectName("dialogSubtitle")
         wifi_subtitle.setWordWrap(True)
         wifi_subtitle.setFont(QFont("Sans Serif", metrics["subtitle_font"]))
-        wifi_layout.addWidget(wifi_subtitle)
+        layout.addWidget(wifi_subtitle)
 
         self.wifi_combo = QComboBox()
         self.wifi_combo.setEditable(True)
-        self.wifi_combo.setMinimumHeight(metrics["input_min_height"] + 2)
+        self.wifi_combo.setMinimumHeight(metrics["input_min_height"])
         self._style_settings_combo_popup(self.wifi_combo)
         self.wifi_combo.lineEdit().setPlaceholderText("Select or type a Wi-Fi network name")
-        wifi_layout.addWidget(self.wifi_combo)
+        layout.addWidget(self.wifi_combo)
 
         self.wifi_password_input = QLineEdit()
         self.wifi_password_input.setPlaceholderText("Wi-Fi password")
         self.wifi_password_input.setEchoMode(QLineEdit.Password)
-        self.wifi_password_input.setMinimumHeight(metrics["input_min_height"] + 2)
-        wifi_layout.addWidget(self.wifi_password_input)
+        self.wifi_password_input.setMinimumHeight(metrics["input_min_height"])
+        layout.addWidget(self.wifi_password_input)
 
         wifi_button_row = QHBoxLayout()
         self.refresh_wifi_button = QPushButton("Refresh Networks")
@@ -2727,23 +2736,16 @@ class NetworkDialog(QDialog):
         self.connect_wifi_button.setProperty("tileVariant", "accent")
         self.connect_wifi_button.clicked.connect(self.connect_wifi)
         wifi_button_row.addWidget(self.connect_wifi_button)
-        wifi_layout.addLayout(wifi_button_row)
+        layout.addLayout(wifi_button_row)
 
         self.wifi_status_label = QLabel("")
         self.wifi_status_label.setObjectName("dialogStatus")
         self.wifi_status_label.setWordWrap(True)
-        wifi_layout.addWidget(self.wifi_status_label)
-
-        layout.addWidget(wifi_panel, 1)
-
-        # Bottom separator and button row
-        bottom_separator = QFrame()
-        bottom_separator.setFrameShape(QFrame.HLine)
-        bottom_separator.setStyleSheet("background-color: rgba(88, 96, 105, 0.3); border: none;")
-        layout.addWidget(bottom_separator)
+        layout.addWidget(self.wifi_status_label)
 
         button_row = QHBoxLayout()
         button_row.addStretch(1)
+        button_row.setSpacing(metrics["nav_spacing"])
 
         close_button = QPushButton("Close")
         close_button.setProperty("tileVariant", "dialogSecondary")
@@ -2762,12 +2764,13 @@ class NetworkDialog(QDialog):
             return
         popup.setStyleSheet(
             """
-            background-color: #141a21;
-            color: #edf2f7;
-            border: 1px solid #2b3641;
-            selection-background-color: #33c3a0;
-            selection-color: #09110f;
-            alternate-background-color: #10161d;
+            background-color: rgba(15, 23, 42, 0.98);
+            color: #f1f5f9;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            selection-background-color: rgba(59, 130, 246, 0.3);
+            selection-color: #f8fafc;
+            alternate-background-color: rgba(30, 41, 59, 0.6);
+            font-size: 14px;
             """
         )
 
@@ -2907,7 +2910,6 @@ class BluetoothDialog(QDialog):
         self.setWindowTitle("Bluetooth Settings")
         self.setModal(True)
         self.setFixedWidth(metrics["settings_width"])
-        self.setFixedHeight(metrics["settings_height"])
 
         bluetooth_devices = bluetooth_devices or []
         self.bluetooth_refresh_callback = bluetooth_refresh_callback
@@ -2919,42 +2921,26 @@ class BluetoothDialog(QDialog):
         self.bluetooth_scan_finished.connect(self.handle_bluetooth_scan_finished)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2, metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2)
-        layout.setSpacing(metrics["dialog_spacing"])
-
-        title = QLabel("Bluetooth Settings")
-        title.setObjectName("dialogTitle")
-        title.setFont(QFont("Sans Serif", metrics["title_font"], QFont.Bold))
-        layout.addWidget(title)
-
-        # Separator line
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setStyleSheet("background-color: rgba(88, 96, 105, 0.3); border: none;")
-        layout.addWidget(separator)
-
-        bluetooth_panel = QWidget()
-        bluetooth_layout = QVBoxLayout(bluetooth_panel)
-        bluetooth_layout.setContentsMargins(0, 0, 0, 0)
-        bluetooth_layout.setSpacing(metrics["dialog_spacing"])
+        layout.setContentsMargins(metrics["dialog_margin_x"], metrics["dialog_margin_y"], metrics["dialog_margin_x"], metrics["dialog_margin_y"])
+        layout.setSpacing(12)
 
         bluetooth_title = QLabel("Bluetooth")
         bluetooth_title.setObjectName("dialogSection")
         bluetooth_title.setFont(QFont("Sans Serif", metrics["section_font"], QFont.Bold))
-        bluetooth_layout.addWidget(bluetooth_title)
+        layout.addWidget(bluetooth_title)
 
         bluetooth_subtitle = QLabel("Scan for nearby Bluetooth devices and connect without leaving LinuxTV.")
         bluetooth_subtitle.setObjectName("dialogSubtitle")
         bluetooth_subtitle.setWordWrap(True)
         bluetooth_subtitle.setFont(QFont("Sans Serif", metrics["subtitle_font"]))
-        bluetooth_layout.addWidget(bluetooth_subtitle)
+        layout.addWidget(bluetooth_subtitle)
 
         self.bluetooth_combo = QComboBox()
         self.bluetooth_combo.setEditable(True)
-        self.bluetooth_combo.setMinimumHeight(metrics["input_min_height"] + 2)
+        self.bluetooth_combo.setMinimumHeight(metrics["input_min_height"])
         self._style_settings_combo_popup(self.bluetooth_combo)
         self.bluetooth_combo.lineEdit().setPlaceholderText("Select or type a Bluetooth device or MAC address")
-        bluetooth_layout.addWidget(self.bluetooth_combo)
+        layout.addWidget(self.bluetooth_combo)
 
         bluetooth_button_row = QHBoxLayout()
         self.refresh_bluetooth_button = QPushButton("Refresh Devices")
@@ -2971,23 +2957,16 @@ class BluetoothDialog(QDialog):
         self.connect_bluetooth_button.setProperty("tileVariant", "accent")
         self.connect_bluetooth_button.clicked.connect(self.connect_bluetooth)
         bluetooth_button_row.addWidget(self.connect_bluetooth_button)
-        bluetooth_layout.addLayout(bluetooth_button_row)
+        layout.addLayout(bluetooth_button_row)
 
         self.bluetooth_status_label = QLabel("")
         self.bluetooth_status_label.setObjectName("dialogStatus")
         self.bluetooth_status_label.setWordWrap(True)
-        bluetooth_layout.addWidget(self.bluetooth_status_label)
-
-        layout.addWidget(bluetooth_panel, 1)
-
-        # Bottom separator and button row
-        bottom_separator = QFrame()
-        bottom_separator.setFrameShape(QFrame.HLine)
-        bottom_separator.setStyleSheet("background-color: rgba(88, 96, 105, 0.3); border: none;")
-        layout.addWidget(bottom_separator)
+        layout.addWidget(self.bluetooth_status_label)
 
         button_row = QHBoxLayout()
         button_row.addStretch(1)
+        button_row.setSpacing(metrics["nav_spacing"])
 
         close_button = QPushButton("Close")
         close_button.setProperty("tileVariant", "dialogSecondary")
@@ -3006,12 +2985,13 @@ class BluetoothDialog(QDialog):
             return
         popup.setStyleSheet(
             """
-            background-color: #141a21;
-            color: #edf2f7;
-            border: 1px solid #2b3641;
-            selection-background-color: #33c3a0;
-            selection-color: #09110f;
-            alternate-background-color: #10161d;
+            background-color: rgba(15, 23, 42, 0.98);
+            color: #f1f5f9;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            selection-background-color: rgba(59, 130, 246, 0.3);
+            selection-color: #f8fafc;
+            alternate-background-color: rgba(30, 41, 59, 0.6);
+            font-size: 14px;
             """
         )
 
@@ -3142,43 +3122,26 @@ class SoundDialog(QDialog):
         self.setWindowTitle("Sound Settings")
         self.setModal(True)
         self.setFixedWidth(metrics["settings_width"])
-        self.setFixedHeight(metrics["settings_height"])
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2, metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2)
-        layout.setSpacing(metrics["dialog_spacing"])
+        layout.setContentsMargins(metrics["dialog_margin_x"], metrics["dialog_margin_y"], metrics["dialog_margin_x"], metrics["dialog_margin_y"])
+        layout.setSpacing(14)
 
-        title = QLabel("Sound Settings")
-        title.setObjectName("dialogTitle")
-        title.setFont(QFont("Sans Serif", metrics["title_font"], QFont.Bold))
+        title = QLabel("Audio Output")
+        title.setObjectName("dialogSection")
+        title.setFont(QFont("Sans Serif", metrics["section_font"], QFont.Bold))
         layout.addWidget(title)
 
-        # Separator line
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setStyleSheet("background-color: rgba(88, 96, 105, 0.3); border: none;")
-        layout.addWidget(separator)
-
-        sound_panel = QWidget()
-        sound_layout = QVBoxLayout(sound_panel)
-        sound_layout.setContentsMargins(0, 0, 0, 0)
-        sound_layout.setSpacing(metrics["dialog_spacing"])
-
-        sound_title = QLabel("Audio Output")
-        sound_title.setObjectName("dialogSection")
-        sound_title.setFont(QFont("Sans Serif", metrics["section_font"], QFont.Bold))
-        sound_layout.addWidget(sound_title)
-
-        sound_subtitle = QLabel("Select the speaker or audio output device for playing sound.")
-        sound_subtitle.setObjectName("dialogSubtitle")
-        sound_subtitle.setWordWrap(True)
-        sound_subtitle.setFont(QFont("Sans Serif", metrics["subtitle_font"]))
-        sound_layout.addWidget(sound_subtitle)
+        subtitle = QLabel("Select the speaker or audio output device for playing sound.")
+        subtitle.setObjectName("dialogSubtitle")
+        subtitle.setWordWrap(True)
+        subtitle.setFont(QFont("Sans Serif", metrics["subtitle_font"]))
+        layout.addWidget(subtitle)
 
         self.speaker_combo = QComboBox()
-        self.speaker_combo.setMinimumHeight(metrics["input_min_height"] + 2)
+        self.speaker_combo.setMinimumHeight(metrics["input_min_height"])
         self._style_settings_combo_popup(self.speaker_combo)
-        sound_layout.addWidget(self.speaker_combo)
+        layout.addWidget(self.speaker_combo)
 
         speaker_button_row = QHBoxLayout()
         self.refresh_speakers_button = QPushButton("Refresh Devices")
@@ -3190,23 +3153,16 @@ class SoundDialog(QDialog):
         self.set_default_button.setProperty("tileVariant", "accent")
         self.set_default_button.clicked.connect(self.set_default_speaker)
         speaker_button_row.addWidget(self.set_default_button)
-        sound_layout.addLayout(speaker_button_row)
+        layout.addLayout(speaker_button_row)
 
         self.speaker_status_label = QLabel("")
         self.speaker_status_label.setObjectName("dialogStatus")
         self.speaker_status_label.setWordWrap(True)
-        sound_layout.addWidget(self.speaker_status_label)
-
-        layout.addWidget(sound_panel, 1)
-
-        # Bottom separator and button row
-        bottom_separator = QFrame()
-        bottom_separator.setFrameShape(QFrame.HLine)
-        bottom_separator.setStyleSheet("background-color: rgba(88, 96, 105, 0.3); border: none;")
-        layout.addWidget(bottom_separator)
+        layout.addWidget(self.speaker_status_label)
 
         button_row = QHBoxLayout()
         button_row.addStretch(1)
+        button_row.setSpacing(metrics["nav_spacing"])
 
         close_button = QPushButton("Close")
         close_button.setProperty("tileVariant", "dialogSecondary")
@@ -3224,12 +3180,13 @@ class SoundDialog(QDialog):
             return
         popup.setStyleSheet(
             """
-            background-color: #141a21;
-            color: #edf2f7;
-            border: 1px solid #2b3641;
-            selection-background-color: #33c3a0;
-            selection-color: #09110f;
-            alternate-background-color: #10161d;
+            background-color: rgba(15, 23, 42, 0.98);
+            color: #f1f5f9;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            selection-background-color: rgba(59, 130, 246, 0.3);
+            selection-color: #f8fafc;
+            alternate-background-color: rgba(30, 41, 59, 0.6);
+            font-size: 14px;
             """
         )
 
@@ -3426,38 +3383,21 @@ class BrightnessDialog(QDialog):
         self.setWindowTitle("Brightness Settings")
         self.setModal(True)
         self.setFixedWidth(metrics["settings_width"])
-        self.setFixedHeight(metrics["settings_height"])
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2, metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2)
-        layout.setSpacing(metrics["dialog_spacing"])
+        layout.setContentsMargins(metrics["dialog_margin_x"], metrics["dialog_margin_y"], metrics["dialog_margin_x"], metrics["dialog_margin_y"])
+        layout.setSpacing(14)
 
-        title = QLabel("Brightness Settings")
-        title.setObjectName("dialogTitle")
-        title.setFont(QFont("Sans Serif", metrics["title_font"], QFont.Bold))
+        title = QLabel("Screen Brightness")
+        title.setObjectName("dialogSection")
+        title.setFont(QFont("Sans Serif", metrics["section_font"], QFont.Bold))
         layout.addWidget(title)
 
-        # Separator line
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setStyleSheet("background-color: rgba(88, 96, 105, 0.3); border: none;")
-        layout.addWidget(separator)
-
-        brightness_panel = QWidget()
-        brightness_layout = QVBoxLayout(brightness_panel)
-        brightness_layout.setContentsMargins(0, 0, 0, 0)
-        brightness_layout.setSpacing(metrics["dialog_spacing"])
-
-        brightness_title = QLabel("Screen Brightness")
-        brightness_title.setObjectName("dialogSection")
-        brightness_title.setFont(QFont("Sans Serif", metrics["section_font"], QFont.Bold))
-        brightness_layout.addWidget(brightness_title)
-
-        brightness_subtitle = QLabel("Adjust the brightness level of your display.")
-        brightness_subtitle.setObjectName("dialogSubtitle")
-        brightness_subtitle.setWordWrap(True)
-        brightness_subtitle.setFont(QFont("Sans Serif", metrics["subtitle_font"]))
-        brightness_layout.addWidget(brightness_subtitle)
+        subtitle = QLabel("Adjust the brightness level of your display.")
+        subtitle.setObjectName("dialogSubtitle")
+        subtitle.setWordWrap(True)
+        subtitle.setFont(QFont("Sans Serif", metrics["subtitle_font"]))
+        layout.addWidget(subtitle)
 
         # Brightness slider
         slider_row = QHBoxLayout()
@@ -3485,8 +3425,7 @@ class BrightnessDialog(QDialog):
         self.brightness_value_label.setFixedWidth(50)
         self.brightness_value_label.setAlignment(Qt.AlignRight)
         slider_row.addWidget(self.brightness_value_label)
-
-        brightness_layout.addLayout(slider_row)
+        layout.addLayout(slider_row)
 
         # Quick preset buttons
         preset_row = QHBoxLayout()
@@ -3497,23 +3436,16 @@ class BrightnessDialog(QDialog):
             preset_button.clicked.connect(lambda checked, val=preset_value: self.set_brightness_preset(val))
             preset_row.addWidget(preset_button)
         
-        brightness_layout.addLayout(preset_row)
+        layout.addLayout(preset_row)
 
         self.brightness_status_label = QLabel("")
         self.brightness_status_label.setObjectName("dialogStatus")
         self.brightness_status_label.setWordWrap(True)
-        brightness_layout.addWidget(self.brightness_status_label)
-
-        layout.addWidget(brightness_panel, 1)
-
-        # Bottom separator and button row
-        bottom_separator = QFrame()
-        bottom_separator.setFrameShape(QFrame.HLine)
-        bottom_separator.setStyleSheet("background-color: rgba(88, 96, 105, 0.3); border: none;")
-        layout.addWidget(bottom_separator)
+        layout.addWidget(self.brightness_status_label)
 
         button_row = QHBoxLayout()
         button_row.addStretch(1)
+        button_row.setSpacing(metrics["nav_spacing"])
 
         close_button = QPushButton("Close")
         close_button.setProperty("tileVariant", "dialogSecondary")
@@ -3549,15 +3481,14 @@ class RemoteLoginDialog(QDialog):
         self.setWindowTitle("Remote Login Settings")
         self.setModal(True)
         self.setFixedWidth(metrics["settings_width"])
-        self.setFixedHeight(metrics["settings_height"])
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2, metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2)
-        layout.setSpacing(metrics["dialog_spacing"])
+        layout.setContentsMargins(metrics["dialog_margin_x"], metrics["dialog_margin_y"], metrics["dialog_margin_x"], metrics["dialog_margin_y"])
+        layout.setSpacing(14)
 
         title = QLabel("Remote Login")
-        title.setObjectName("dialogTitle")
-        title.setFont(QFont("Sans Serif", metrics["title_font"], QFont.Bold))
+        title.setObjectName("dialogSection")
+        title.setFont(QFont("Sans Serif", metrics["section_font"], QFont.Bold))
         layout.addWidget(title)
 
         subtitle = QLabel("Set the phone credentials required to control LinuxTV remotely.")
@@ -3592,6 +3523,7 @@ class RemoteLoginDialog(QDialog):
 
         button_row = QHBoxLayout()
         button_row.addStretch(1)
+        button_row.setSpacing(metrics["nav_spacing"])
 
         cancel_button = QPushButton("Cancel")
         cancel_button.setProperty("tileVariant", "dialogSecondary")
@@ -3627,32 +3559,26 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("LinuxTV")
         self.setModal(True)
         self.setFixedWidth(metrics["settings_width"])
-        self.setFixedHeight(metrics["settings_height"])
 
         auto_launch = auto_launch or {}
         app_options = app_options or []
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2, metrics["dialog_margin_x"] + 2, metrics["dialog_margin_y"] + 2)
-        layout.setSpacing(metrics["dialog_spacing"])
+        layout.setContentsMargins(metrics["dialog_margin_x"], metrics["dialog_margin_y"], metrics["dialog_margin_x"], metrics["dialog_margin_y"])
+        layout.setSpacing(14)
         self.section_buttons = {}
         self.section_panels = {}
 
-        auto_panel = QWidget()
-        auto_layout = QVBoxLayout(auto_panel)
-        auto_layout.setContentsMargins(0, 0, 0, 0)
-        auto_layout.setSpacing(metrics["dialog_spacing"])
+        title = QLabel("Auto Open")
+        title.setObjectName("dialogSection")
+        title.setFont(QFont("Sans Serif", metrics["section_font"], QFont.Bold))
+        layout.addWidget(title)
 
-        auto_title = QLabel("Auto Open")
-        auto_title.setObjectName("dialogSection")
-        auto_title.setFont(QFont("Sans Serif", metrics["section_font"], QFont.Bold))
-        auto_layout.addWidget(auto_title)
-
-        auto_subtitle = QLabel("Choose which app or site opens automatically after LinuxTV sits idle.")
-        auto_subtitle.setObjectName("dialogSubtitle")
-        auto_subtitle.setWordWrap(True)
-        auto_subtitle.setFont(QFont("Sans Serif", metrics["subtitle_font"]))
-        auto_layout.addWidget(auto_subtitle)
+        subtitle = QLabel("Choose which app or site opens automatically after LinuxTV sits idle.")
+        subtitle.setObjectName("dialogSubtitle")
+        subtitle.setWordWrap(True)
+        subtitle.setFont(QFont("Sans Serif", metrics["subtitle_font"]))
+        layout.addWidget(subtitle)
 
         self.auto_launch_combo = QComboBox()
         self.auto_launch_combo.setMinimumHeight(metrics["input_min_height"])
@@ -3666,21 +3592,19 @@ class SettingsDialog(QDialog):
             if option["kind"] == selected_kind and option["target"] == selected_target:
                 selected_index = index
         self.auto_launch_combo.setCurrentIndex(selected_index)
-        auto_layout.addWidget(self.auto_launch_combo)
+        layout.addWidget(self.auto_launch_combo)
 
         self.delay_input = QLineEdit()
         self.delay_input.setPlaceholderText("Idle delay in seconds")
         self.delay_input.setText(str(auto_launch.get("delay_seconds", AUTO_LAUNCH_IDLE_MS // 1000)))
         self.delay_input.setMinimumHeight(metrics["input_min_height"])
-        auto_layout.addWidget(self.delay_input)
+        layout.addWidget(self.delay_input)
 
         auto_helper = QLabel("Pick Disabled to turn auto open off. Enter a whole number of seconds.")
         auto_helper.setObjectName("dialogSubtitle")
         auto_helper.setWordWrap(True)
         auto_helper.setFont(QFont("Sans Serif", metrics["helper_font"]))
-        auto_layout.addWidget(auto_helper)
-
-        layout.addWidget(auto_panel, 1)
+        layout.addWidget(auto_helper)
 
         button_row = QHBoxLayout()
         button_row.addStretch(1)
@@ -3705,12 +3629,13 @@ class SettingsDialog(QDialog):
             return
         popup.setStyleSheet(
             """
-            background-color: #141a21;
-            color: #edf2f7;
-            border: 1px solid #2b3641;
-            selection-background-color: #33c3a0;
-            selection-color: #09110f;
-            alternate-background-color: #10161d;
+            background-color: rgba(15, 23, 42, 0.98);
+            color: #f1f5f9;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            selection-background-color: rgba(59, 130, 246, 0.3);
+            selection-color: #f8fafc;
+            alternate-background-color: rgba(30, 41, 59, 0.6);
+            font-size: 14px;
             """
         )
 
@@ -4326,169 +4251,169 @@ class LauncherWindow(QMainWindow):
         m = self.ui_metrics
         stylesheet = """
             QMainWindow {
-                background: #0a0e14;
+                background: #0f172a;
             }
             QWidget#centralShell {
                 background: transparent;
-                color: #e6edf3;
+                color: #f1f5f9;
             }
             QWidget#heroCard {
                 background: transparent;
                 border: none;
-                border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+                border-bottom: 1px solid rgba(71, 85, 105, 0.4);
             }
             QToolButton#remoteButton {
                 background: transparent;
-                color: #c9d1d9;
+                color: #cbd5e1;
                 border: none;
                 font-size: __SETTINGS_FONT__px;
                 padding: 0;
             }
             QToolButton#remoteButton:hover {
-                background: rgba(88, 166, 255, 0.15);
+                background: rgba(59, 130, 246, 0.2);
                 border-radius: __SETTINGS_RADIUS__px;
-                color: #58a6ff;
+                color: #3b82f6;
             }
             QToolButton#remoteButton:pressed {
-                background: rgba(88, 166, 255, 0.25);
+                background: rgba(59, 130, 246, 0.3);
                 border-radius: __SETTINGS_RADIUS__px;
             }
             QToolButton#autoButton {
                 background: transparent;
-                color: #c9d1d9;
+                color: #cbd5e1;
                 border: none;
                 font-size: __SETTINGS_FONT__px;
                 padding: 0;
             }
             QToolButton#autoButton:hover {
-                background: rgba(88, 166, 255, 0.15);
+                background: rgba(59, 130, 246, 0.2);
                 border-radius: __SETTINGS_RADIUS__px;
-                color: #58a6ff;
+                color: #3b82f6;
             }
             QToolButton#autoButton:pressed {
-                background: rgba(88, 166, 255, 0.25);
+                background: rgba(59, 130, 246, 0.3);
                 border-radius: __SETTINGS_RADIUS__px;
             }
             QToolButton#shutdownButton {
                 background: transparent;
-                color: #f85149;
+                color: #ef4444;
                 border: none;
                 font-size: __SETTINGS_FONT__px;
                 padding: 0;
             }
             QToolButton#shutdownButton:hover {
-                background: rgba(248, 81, 73, 0.15);
+                background: rgba(239, 68, 68, 0.2);
                 border-radius: __SETTINGS_RADIUS__px;
-                color: #ff6b6b;
+                color: #f87171;
             }
             QToolButton#shutdownButton:pressed {
-                background: rgba(248, 81, 73, 0.25);
+                background: rgba(239, 68, 68, 0.3);
                 border-radius: __SETTINGS_RADIUS__px;
             }
             QToolButton#restartButton {
                 background: transparent;
-                color: #d29922;
+                color: #f59e0b;
                 border: none;
                 font-size: __SETTINGS_FONT__px;
                 padding: 0;
             }
             QToolButton#restartButton:hover {
-                background: rgba(210, 153, 34, 0.15);
+                background: rgba(245, 158, 11, 0.2);
                 border-radius: __SETTINGS_RADIUS__px;
-                color: #e3b341;
+                color: #fbbf24;
             }
             QToolButton#restartButton:pressed {
-                background: rgba(210, 153, 34, 0.25);
+                background: rgba(245, 158, 11, 0.3);
                 border-radius: __SETTINGS_RADIUS__px;
             }
             QToolButton#updateButton {
                 background: transparent;
-                color: #58a6ff;
+                color: #3b82f6;
                 border: none;
                 font-size: __SETTINGS_FONT__px;
                 padding: 0;
             }
             QToolButton#updateButton:hover {
-                background: rgba(88, 166, 255, 0.15);
+                background: rgba(59, 130, 246, 0.2);
                 border-radius: __SETTINGS_RADIUS__px;
-                color: #79b8ff;
+                color: #60a5fa;
             }
             QToolButton#updateButton:pressed {
-                background: rgba(88, 166, 255, 0.25);
+                background: rgba(59, 130, 246, 0.3);
                 border-radius: __SETTINGS_RADIUS__px;
             }
             QToolButton#networkButton {
                 background: transparent;
-                color: #58a6ff;
+                color: #3b82f6;
                 border: none;
                 font-size: __SETTINGS_FONT__px;
                 padding: 0;
             }
             QToolButton#networkButton:hover {
-                background: rgba(88, 166, 255, 0.15);
+                background: rgba(59, 130, 246, 0.2);
                 border-radius: __SETTINGS_RADIUS__px;
-                color: #79c0ff;
+                color: #60a5fa;
             }
             QToolButton#networkButton:pressed {
-                background: rgba(88, 166, 255, 0.25);
+                background: rgba(59, 130, 246, 0.3);
                 border-radius: __SETTINGS_RADIUS__px;
             }
             QToolButton#bluetoothButton {
                 background: transparent;
-                color: #bc8cff;
+                color: #8b5cf6;
                 border: none;
                 font-size: __SETTINGS_FONT__px;
                 padding: 0;
             }
             QToolButton#bluetoothButton:hover {
-                background: rgba(188, 140, 255, 0.15);
+                background: rgba(139, 92, 246, 0.2);
                 border-radius: __SETTINGS_RADIUS__px;
-                color: #d2a8ff;
+                color: #a78bfa;
             }
             QToolButton#bluetoothButton:pressed {
-                background: rgba(188, 140, 255, 0.25);
+                background: rgba(139, 92, 246, 0.3);
                 border-radius: __SETTINGS_RADIUS__px;
             }
             QToolButton#soundButton {
                 background: transparent;
-                color: #3fb950;
+                color: #10b981;
                 border: none;
                 font-size: __SETTINGS_FONT__px;
                 padding: 0;
             }
             QToolButton#soundButton:hover {
-                background: rgba(63, 185, 80, 0.15);
+                background: rgba(16, 185, 129, 0.2);
                 border-radius: __SETTINGS_RADIUS__px;
-                color: #56d364;
+                color: #34d399;
             }
             QToolButton#soundButton:pressed {
-                background: rgba(63, 185, 80, 0.25);
+                background: rgba(16, 185, 129, 0.3);
                 border-radius: __SETTINGS_RADIUS__px;
             }
             QToolButton#brightnessButton {
                 background: transparent;
-                color: #d29922;
+                color: #f59e0b;
                 border: none;
                 font-size: __SETTINGS_FONT__px;
                 padding: 0;
             }
             QToolButton#brightnessButton:hover {
-                background: rgba(210, 153, 34, 0.15);
+                background: rgba(245, 158, 11, 0.2);
                 border-radius: __SETTINGS_RADIUS__px;
-                color: #e3b341;
+                color: #fbbf24;
             }
             QToolButton#brightnessButton:pressed {
-                background: rgba(210, 153, 34, 0.25);
+                background: rgba(245, 158, 11, 0.3);
                 border-radius: __SETTINGS_RADIUS__px;
             }
             QLabel#heroTitle {
-                color: #ffffff;
+                color: #f8fafc;
                 font-weight: bold;
                 letter-spacing: 0.8px;
                 font-size: __HERO_TITLE__px;
             }
             QLabel#ipLabel {
-                color: #8b949e;
+                color: #94a3b8;
                 font-size: 14px;
             }
             QScrollArea#tileScroll, QWidget#tileContainer {
@@ -4499,7 +4424,7 @@ class LauncherWindow(QMainWindow):
                 background: transparent;
             }
             QLabel[rowHeading="true"] {
-                color: #f0f3f6;
+                color: #f1f5f9;
                 font-size: __ROW_HEADING__px;
                 font-weight: 700;
                 padding: 20px 16px 12px 16px;
@@ -4527,9 +4452,9 @@ class LauncherWindow(QMainWindow):
             }
             QPushButton[tileVariant="default"] {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #1e2329, stop:1 #16191f);
-                color: #e6edf3;
-                border: 1px solid rgba(76, 83, 91, 0.3);
+                    stop:0 rgba(51, 65, 85, 0.9), stop:1 rgba(30, 41, 59, 0.95));
+                color: #f1f5f9;
+                border: 1px solid rgba(71, 85, 105, 0.4);
                 border-radius: 16px;
                 padding: __TILE_PADDING_BOTTOM__px __TILE_PADDING_LR__px;
                 padding-left: __TILE_PADDING_LR__px;
@@ -4542,21 +4467,21 @@ class LauncherWindow(QMainWindow):
             }
             QPushButton[tileVariant="default"]:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #24292f, stop:1 #1c2128);
-                border: 1px solid rgba(88, 96, 105, 0.5);
+                    stop:0 rgba(71, 85, 105, 0.95), stop:1 rgba(51, 65, 85, 0.95));
+                border: 1px solid rgba(100, 116, 139, 0.6);
             }
             QPushButton[tileVariant="default"]:focus {
-                border: 2px solid #58a6ff;
+                border: 2px solid #3b82f6;
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 rgba(31, 111, 235, 0.2), stop:1 rgba(22, 87, 183, 0.25));
+                    stop:0 rgba(59, 130, 246, 0.25), stop:1 rgba(37, 99, 235, 0.3));
                 color: #ffffff;
                 font-weight: 700;
             }
             QPushButton[tileVariant="accent"] {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #238636, stop:1 #1a7f37);
+                    stop:0 #10b981, stop:1 #059669);
                 color: #ffffff;
-                border: 1px solid #2ea043;
+                border: 1px solid #34d399;
                 border-radius: 16px;
                 padding: __TILE_PADDING_BOTTOM__px __TILE_PADDING_LR__px;
                 padding-left: __TILE_PADDING_LR__px;
@@ -4569,114 +4494,114 @@ class LauncherWindow(QMainWindow):
             }
             QPushButton[tileVariant="accent"]:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2ea043, stop:1 #238636);
-                border: 1px solid #3fb950;
+                    stop:0 #34d399, stop:1 #10b981);
+                border: 1px solid #6ee7b7;
             }
             QPushButton[tileVariant="accent"]:focus {
-                border: 2px solid #58a6ff;
+                border: 2px solid #3b82f6;
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 rgba(46, 160, 67, 0.25), stop:1 rgba(35, 134, 54, 0.3));
+                    stop:0 rgba(52, 211, 153, 0.3), stop:1 rgba(16, 185, 129, 0.35));
             }
             QWidget#appCardShell {
                 background: transparent;
             }
             QToolButton#editButton {
                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 rgba(48, 54, 61, 0.9), stop:1 rgba(38, 43, 50, 0.95));
-                color: #8b949e;
-                border: 1px solid rgba(76, 83, 91, 0.5);
+                    stop:0 rgba(51, 65, 85, 0.9), stop:1 rgba(30, 41, 59, 0.95));
+                color: #94a3b8;
+                border: 1px solid rgba(71, 85, 105, 0.5);
                 border-radius: 14px;
                 font-size: 18px;
                 padding-bottom: 2px;
             }
             QToolButton#editButton:hover {
                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #58a6ff, stop:1 #1f6feb);
+                    stop:0 #3b82f6, stop:1 #2563eb);
                 color: #ffffff;
-                border: 1px solid #58a6ff;
+                border: 1px solid #3b82f6;
             }
             QToolButton#editButton:pressed {
-                background-color: #1158c7;
-                border: 1px solid #58a6ff;
+                background-color: #1d4ed8;
+                border: 1px solid #3b82f6;
             }
             QToolButton#favoriteButton {
                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 rgba(48, 54, 61, 0.9), stop:1 rgba(38, 43, 50, 0.95));
-                color: #d29922;
-                border: 1px solid rgba(210, 153, 34, 0.5);
+                    stop:0 rgba(51, 65, 85, 0.9), stop:1 rgba(30, 41, 59, 0.95));
+                color: #f59e0b;
+                border: 1px solid rgba(245, 158, 11, 0.5);
                 border-radius: 14px;
                 font-size: 20px;
                 padding-bottom: 2px;
             }
             QToolButton#favoriteButton:hover {
                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #d29922, stop:1 #bb8009);
+                    stop:0 #f59e0b, stop:1 #d97706);
                 color: #ffffff;
-                border: 1px solid #d29922;
+                border: 1px solid #f59e0b;
             }
             QToolButton#favoriteButton:pressed {
-                background-color: #9e6a03;
-                border: 1px solid #d29922;
+                background-color: #b45309;
+                border: 1px solid #f59e0b;
             }
             QToolButton#reorderButton {
                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 rgba(48, 54, 61, 0.9), stop:1 rgba(38, 43, 50, 0.95));
-                color: #8b949e;
-                border: 1px solid rgba(76, 83, 91, 0.5);
+                    stop:0 rgba(51, 65, 85, 0.9), stop:1 rgba(30, 41, 59, 0.95));
+                color: #94a3b8;
+                border: 1px solid rgba(71, 85, 105, 0.5);
                 border-radius: 14px;
                 font-size: 16px;
                 padding-bottom: 2px;
             }
             QToolButton#reorderButton:hover {
                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 rgba(58, 64, 71, 0.95), stop:1 rgba(48, 54, 61, 0.95));
-                color: #e6edf3;
-                border: 1px solid rgba(88, 96, 105, 0.7);
+                    stop:0 rgba(71, 85, 105, 0.95), stop:1 rgba(51, 65, 85, 0.95));
+                color: #f1f5f9;
+                border: 1px solid rgba(100, 116, 139, 0.7);
             }
             QToolButton#reorderButton:pressed {
-                background-color: rgba(38, 43, 50, 0.95);
-                border: 1px solid rgba(76, 83, 91, 0.7);
+                background-color: rgba(30, 41, 59, 0.95);
+                border: 1px solid rgba(71, 85, 105, 0.7);
             }
             QToolButton#deleteButton {
                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 rgba(72, 23, 23, 0.9), stop:1 rgba(58, 18, 18, 0.95));
-                color: #f85149;
-                border: 1px solid rgba(248, 81, 73, 0.5);
+                    stop:0 rgba(127, 29, 29, 0.9), stop:1 rgba(103, 15, 15, 0.95));
+                color: #ef4444;
+                border: 1px solid rgba(239, 68, 68, 0.5);
                 border-radius: 14px;
                 font-size: 18px;
             }
             QToolButton#deleteButton:hover {
                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #f85149, stop:1 #da3633);
-                border: 1px solid #f85149;
+                    stop:0 #ef4444, stop:1 #dc2626);
+                border: 1px solid #ef4444;
                 color: #ffffff;
             }
             QToolButton#deleteButton:pressed {
-                background-color: #a40e26;
-                border: 1px solid #f85149;
+                background-color: #991b1b;
+                border: 1px solid #ef4444;
             }
             QPushButton[hasSubtitle="true"] {
                 padding-top: __TILE_SUBTITLE_TOP__px;
                 padding-bottom: __TILE_SUBTITLE_BOTTOM__px;
             }
             QLabel#footerHint {
-                color: rgba(139, 148, 158, 0.6);
+                color: rgba(148, 163, 184, 0.7);
                 padding: __FOOTER_PADDING_Y__px 20px;
                 font-size: __FOOTER_FONT__px;
                 letter-spacing: 0.3px;
                 background: transparent;
             }
             QLabel#autoLaunchStatus {
-                color: #58a6ff;
+                color: #3b82f6;
                 padding: 0 20px 12px 20px;
                 font-size: __STATUS_FONT__px;
                 font-weight: 600;
             }
             QPushButton#autoLaunchCancelButton {
                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 rgba(48, 54, 61, 0.9), stop:1 rgba(38, 43, 50, 0.95));
-                color: #c9d1d9;
-                border: 1px solid rgba(76, 83, 91, 0.5);
+                    stop:0 rgba(51, 65, 85, 0.9), stop:1 rgba(30, 41, 59, 0.95));
+                color: #cbd5e1;
+                border: 1px solid rgba(71, 85, 105, 0.5);
                 border-radius: 16px;
                 padding: 12px 20px;
                 min-width: __CANCEL_WIDTH__px;
@@ -4685,13 +4610,13 @@ class LauncherWindow(QMainWindow):
             }
             QPushButton#autoLaunchCancelButton:hover {
                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #58a6ff, stop:1 #1f6feb);
-                border: 1px solid #58a6ff;
+                    stop:0 #3b82f6, stop:1 #2563eb);
+                border: 1px solid #3b82f6;
                 color: #ffffff;
             }
             QPushButton#autoLaunchCancelButton:pressed {
-                background-color: #1158c7;
-                border: 1px solid #58a6ff;
+                background-color: #1d4ed8;
+                border: 1px solid #3b82f6;
             }
             """
         replacements = {
@@ -4761,7 +4686,7 @@ class LauncherWindow(QMainWindow):
                         icon_label.setFixedSize(32, 32)
                     
                     text_label = QLabel(category_name)
-                    text_label.setStyleSheet("color: white;")
+                    text_label.setStyleSheet("color: #f1f5f9;")
                     text_label.setFont(QFont("Sans Serif", 20, QFont.Bold))
                     
                     header_layout = QHBoxLayout()
@@ -4791,7 +4716,7 @@ class LauncherWindow(QMainWindow):
                         icon_label.setFixedSize(32, 32)
                     
                     text_label = QLabel(category_name)
-                    text_label.setStyleSheet("color: white;")
+                    text_label.setStyleSheet("color: #f1f5f9;")
                     text_label.setFont(QFont("Sans Serif", 20, QFont.Bold))
                     
                     header_layout = QHBoxLayout()
