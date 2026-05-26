@@ -2136,6 +2136,8 @@ class TileButton(QPushButton):
         self.entry_item = None
         self.setFocusPolicy(Qt.StrongFocus)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        # Allow parent to handle mouse events for drag and drop
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         self.setMinimumSize(self.base_size)
         self.setMaximumSize(self.shell_size)
         self.setFont(QFont("Sans Serif", tile_font, QFont.Bold))
@@ -2168,28 +2170,28 @@ class TileButton(QPushButton):
         self.ripple_pos = event.pos()
         self.ripple_radius = 0
         self.ripple_opacity = 0.3
-        
+
         # Create ripple animation using QTimer (QPropertyAnimation doesn't work with Python properties)
         if self.ripple_timer:
             self.ripple_timer.stop()
-        
+
         self.ripple_timer = QTimer(self)
         self.ripple_timer.setSingleShot(False)
         target_radius = max(self.width(), self.height()) * 1.5
         duration_ms = 400
         interval_ms = 16  # ~60 FPS
         step = target_radius / (duration_ms / interval_ms)
-        
+
         def animate_ripple():
             if self.ripple_radius >= target_radius:
                 self.ripple_timer.stop()
                 self.ripple_timer = None
             else:
                 self.ripple_radius = min(self.ripple_radius + step, target_radius)
-        
+
         self.ripple_timer.timeout.connect(animate_ripple)
         self.ripple_timer.start(interval_ms)
-        
+
         super().mousePressEvent(event)
         
     def paintEvent(self, event):
@@ -2254,24 +2256,11 @@ class TileButton(QPushButton):
 
 
 class DropRowWidget(QWidget):
-    """Custom widget that accepts drops and forwards to parent handler"""
-    def __init__(self, parent_handler=None, parent=None):
+    """Custom widget container for app cards - does not handle drops"""
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.setAcceptDrops(True)
-        self.parent_handler = parent_handler
-    
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasText():
-            event.acceptProposedAction()
-    
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasText():
-            event.acceptProposedAction()
-    
-    def dropEvent(self, event):
-        if event.mimeData().hasText() and self.parent_handler:
-            event.acceptProposedAction()
-            self.parent_handler(event)
+        # Do not accept drops - let children handle them
+        self.setAcceptDrops(False)
 
 
 class AppCard(QWidget):
@@ -2339,6 +2328,53 @@ class AppCard(QWidget):
         self._drag_start_pos = None
         self._drag_source = None  # Track drag source
 
+        # Install event filter on tile_button to intercept mouse events for drag
+        self.tile_button.installEventFilter(self)
+
+    def eventFilter(self, watched, event):
+        """Intercept mouse events from tile_button for drag handling"""
+        if watched == self.tile_button:
+            if event.type() == QEvent.MouseButtonPress:
+                # Map coordinates from tile_button to app_card
+                mapped_event = self._map_mouse_event(event)
+                self.mousePressEvent(mapped_event)
+                # Don't return True - let the button also handle it
+            elif event.type() == QEvent.MouseMove:
+                # Map coordinates from tile_button to app_card
+                mapped_event = self._map_mouse_event(event)
+                self.mouseMoveEvent(mapped_event)
+                # If we're dragging, don't pass to button
+                if self._is_dragging:
+                    return True
+            elif event.type() == QEvent.MouseButtonRelease:
+                # Map coordinates from tile_button to app_card
+                mapped_event = self._map_mouse_event(event)
+                self.mouseReleaseEvent(mapped_event)
+                if self._is_dragging:
+                    return True
+        return super().eventFilter(watched, event)
+
+    def _map_mouse_event(self, event):
+        """Map mouse event coordinates from tile_button to app_card"""
+        # Get the tile_button's position relative to the app_card
+        button_pos = self.tile_button.pos()
+        # Create a new event with mapped coordinates
+        mapped_pos = event.pos() + button_pos
+        if QT_BINDING == "PyQt5":
+            from PyQt5.QtCore import QPoint
+            from PyQt5.QtGui import QMouseEvent
+        else:
+            from PySide6.QtCore import QPoint
+            from PySide6.QtGui import QMouseEvent
+        return QMouseEvent(
+            event.type(),
+            QPoint(mapped_pos.x(), mapped_pos.y()),
+            event.globalPos(),
+            event.button(),
+            event.buttons(),
+            event.modifiers()
+        )
+
     def sizeHint(self):
         return self.tile_button.shell_size
 
@@ -2369,21 +2405,30 @@ class AppCard(QWidget):
             self._is_dragging = False
         super().mousePressEvent(event)
 
+    def mouseReleaseEvent(self, event):
+        """Reset drag state on mouse release"""
+        if event.button() == Qt.LeftButton:
+            self._is_dragging = False
+            self._drag_start_pos = None
+        super().mouseReleaseEvent(event)
+
     def mouseMoveEvent(self, event):
         """Initiate drag operation"""
         if not (event.buttons() & Qt.LeftButton):
             return
         if not self._drag_start_pos:
             return
-            
+
         # Check if mouse has moved far enough to start drag
         if (event.pos() - self._drag_start_pos).manhattanLength() < QApplication.startDragDistance():
             return
-            
+
         # Don't start drag if clicking on buttons
         for btn in [self.favorite_button, self.edit_button, self.delete_button]:
             if btn and btn.geometry().contains(event.pos()):
                 return
+
+        # Allow drag even if clicking on tile_button (that's the main interaction area)
         
         self._is_dragging = True
         AppCard._drag_source = self  # Store as class variable
@@ -2425,13 +2470,25 @@ class AppCard(QWidget):
 
     def dragEnterEvent(self, event):
         """Accept drag events"""
-        if event.mimeData().hasText() and event.mimeData().text() == "app_card":
-            event.acceptProposedAction()
+        if event.mimeData().hasText():
+            try:
+                import json
+                data = json.loads(event.mimeData().text())
+                if "app_id" in data and "kind" in data:
+                    event.accept()
+            except (json.JSONDecodeError, KeyError):
+                event.ignore()
 
     def dragMoveEvent(self, event):
         """Handle drag move"""
-        if event.mimeData().hasText() and event.mimeData().text() == "app_card":
-            event.acceptProposedAction()
+        if event.mimeData().hasText():
+            try:
+                import json
+                data = json.loads(event.mimeData().text())
+                if "app_id" in data and "kind" in data:
+                    event.accept()
+            except (json.JSONDecodeError, KeyError):
+                event.ignore()
 
     def dropEvent(self, event):
         """Handle drop - trigger reorder"""
@@ -2440,23 +2497,30 @@ class AppCard(QWidget):
         try:
             data = json.loads(event.mimeData().text())
             logging.info(f"Drop event received: {data}")
-            
+
             if "app_id" in data and "kind" in data:
                 # Use the tracked drag source
                 source_card = AppCard._drag_source
                 if not source_card:
                     logging.warning("No drag source tracked")
+                    event.ignore()
                     return
-                
-                event.acceptProposedAction()
+
+                event.accept()
                 logging.info(f"Dropped on card: {self.app_data}, calling handler")
-                
-                # Notify parent to handle reorder
+
+                # Notify parent to handle reorder - look up the parent chain
                 parent = self.parentWidget()
-                if parent and hasattr(parent, 'handle_card_drop'):
-                    parent.handle_card_drop(data, self.app_data, self.kind)
+                while parent:
+                    if hasattr(parent, 'handle_card_drop'):
+                        parent.handle_card_drop(data, self.app_data, self.kind)
+                        break
+                    parent = parent.parentWidget()
+            else:
+                event.ignore()
         except (json.JSONDecodeError, KeyError) as e:
             logging.error(f"Drop event error: {e}")
+            event.ignore()
 
     def enterEvent(self, event):
         """Enhance shadow on hover"""
@@ -4747,7 +4811,7 @@ class LauncherWindow(QMainWindow):
             row_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             row_scroll.setFixedHeight(self.ui_metrics["row_scroll_height"])
 
-            row_widget = DropRowWidget(parent_handler=self.handle_row_card_drop)
+            row_widget = DropRowWidget()
             row_widget.setProperty("rowContent", "true")
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(
@@ -4841,7 +4905,7 @@ class LauncherWindow(QMainWindow):
         add_row_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         add_row_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         add_row_scroll.setFixedHeight(self.ui_metrics["row_scroll_height"])
-        add_row_widget = DropRowWidget(parent_handler=self.handle_row_card_drop)
+        add_row_widget = DropRowWidget()
         add_row_widget.setProperty("rowContent", "true")
         add_row_layout = QHBoxLayout(add_row_widget)
         add_row_layout.setContentsMargins(
@@ -5406,56 +5470,6 @@ class LauncherWindow(QMainWindow):
         
         # Refresh tiles
         QTimer.singleShot(0, self.populate_tiles)
-    
-    def handle_row_card_drop(self, event):
-        """Handle drop on row widget - find cards by position"""
-        import json
-        import logging
-        try:
-            data = json.loads(event.mimeData().text())
-            logging.info(f"Row drop event: {data}")
-            
-            if "app_id" not in data or "kind" not in data:
-                return
-            
-            source_app_id = data["app_id"]
-            source_kind = data["kind"]
-            
-            # Find which card we're dropping on based on event position
-            drop_pos = event.pos()
-            row_widget = self.sender()
-            
-            # Get all child cards
-            cards = []
-            for i in range(row_widget.layout().count()):
-                item = row_widget.layout().itemAt(i)
-                if item and item.widget():
-                    widget = item.widget()
-                    if isinstance(widget, AppCard) and widget.app_data:
-                        cards.append((widget, widget.x()))
-            
-            if not cards:
-                return
-            
-            # Sort cards by x position
-            cards.sort(key=lambda c: c[1])
-            
-            # Find the card at drop position
-            target_card = None
-            for card, x_pos in cards:
-                if drop_pos.x() >= x_pos and drop_pos.x() < x_pos + card.width():
-                    target_card = card
-                    break
-            
-            if not target_card:
-                # If no card found, use the last one
-                target_card = cards[-1][0]
-            
-            # Call the normal handler
-            self.handle_card_drop(data, target_card.app_data, target_card.kind)
-            
-        except (json.JSONDecodeError, KeyError) as e:
-            logging.error(f"Row drop error: {e}")
 
     def open_remote_settings(self):
         """Open remote login credentials dialog"""
