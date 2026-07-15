@@ -2,11 +2,25 @@ Window.SetBackgroundTopColor(0.0, 0.0, 0.0);
 Window.SetBackgroundBottomColor(0.0, 0.0, 0.0);
 
 logo_image = Image("splash.png");
-logo_sprite = Sprite(logo_image);
+
+screen_width = Window.GetWidth();
+screen_height = Window.GetHeight();
+image_width = logo_image.GetWidth();
+image_height = logo_image.GetHeight();
+
+scale_factor = screen_width / image_width;
+if (scale_factor > screen_height / image_height) {
+    scale_factor = screen_height / image_height;
+}
+
+scale_factor = scale_factor * 0.9;
+
+scaled_logo = logo_image.Scale(logo_image.GetWidth() * scale_factor, logo_image.GetHeight() * scale_factor);
+logo_sprite = Sprite(scaled_logo);
 
 fun RefreshLogo() {
-    logo_sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - logo_image.GetWidth() / 2);
-    logo_sprite.SetY(Window.GetY() + Window.GetHeight() / 2 - logo_image.GetHeight() / 2);
+    logo_sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - scaled_logo.GetWidth() / 2);
+    logo_sprite.SetY(Window.GetY() + Window.GetHeight() / 2 - scaled_logo.GetHeight() / 2);
 }
 
 RefreshLogo();
