@@ -1,0 +1,12 @@
+[Unit]
+Description=Set audio volume to 100% at startup
+After=graphical.target sound.target pulseaudio.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/set-audio-volume.sh
+User=linuxtv
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=graphical.target
