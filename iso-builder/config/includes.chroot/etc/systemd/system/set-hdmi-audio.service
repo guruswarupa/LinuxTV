@@ -1,0 +1,11 @@
+[Unit]
+Description=Set HDMI/TV speakers as default audio output
+After=graphical.target sound.target pulseaudio.service set-audio-volume.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/set-hdmi-audio.sh
+User=linuxtv
+
+[Install]
+WantedBy=graphical.target
