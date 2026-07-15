@@ -73,7 +73,7 @@ if mount "$PERSIST_PARTITION" "$MOUNT_POINT" 2>/dev/null; then
     # picks up the new persistence partition on next boot
     if [ "$NEEDS_REBOOT" = true ]; then
         echo "Rebooting to activate persistence..."
-        reboot
+        systemctl reboot
     fi
 fi
 

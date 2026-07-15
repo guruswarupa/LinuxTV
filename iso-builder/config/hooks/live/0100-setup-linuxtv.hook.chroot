@@ -168,3 +168,15 @@ chmod +x /usr/local/bin/setup-persistence.sh
 
 # Enable persistence setup service
 systemctl enable setup-persistence.service 2>/dev/null || true
+
+# Make audio volume script executable
+chmod +x /usr/local/bin/set-audio-volume.sh
+
+# Enable audio volume service
+systemctl enable set-audio-volume.service 2>/dev/null || true
+
+# Make HDMI audio script executable
+chmod +x /usr/local/bin/set-hdmi-audio.sh
+
+# Enable HDMI audio service
+systemctl enable set-hdmi-audio.service 2>/dev/null || true
