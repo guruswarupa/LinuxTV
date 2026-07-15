@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  iso-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./iso-builder:/LinuxTV/iso-builder
+      - ./linuxtvdesktop:/LinuxTV/linuxtvdesktop
+      - ./linuxtvremote:/LinuxTV/linuxtvremote
+    privileged: true
