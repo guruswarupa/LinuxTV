@@ -1710,7 +1710,8 @@ class WebSocketControlServer(threading.Thread):
                             await websocket.send(json.dumps({"status": "error", "error": "command required for native app"}))
                             continue
                         
-                        self.window.add_native_app(app_name, app_command)
+                        # Schedule GUI work on main thread
+                        QTimer.singleShot(0, lambda name=app_name, cmd=app_command: self.window.add_native_app(name, cmd, notify=False))
                         logging.info("Added native app: %s (%s)", app_name, app_command)
                         
                     elif app_kind == "web":
@@ -1719,7 +1720,8 @@ class WebSocketControlServer(threading.Thread):
                             await websocket.send(json.dumps({"status": "error", "error": "url required for web app"}))
                             continue
                         
-                        self.window.add_web_app(app_name, app_url)
+                        # Schedule GUI work on main thread
+                        QTimer.singleShot(0, lambda name=app_name, url=app_url: self.window.add_web_app(name, url, notify=False))
                         logging.info("Added web app: %s (%s)", app_name, app_url)
                     
                     await websocket.send(json.dumps({"status": "ok", "type": "app_added"}))
@@ -1959,28 +1961,6 @@ class WebSocketControlServer(threading.Thread):
                             "status": "error",
                             "type": "brightness_set",
                             "message": f"Failed to set brightness: {exc}"
-                        }))
-                    continue
-
-                # Handle Add App request
-                if message_type == "add_app":
-                    app_id = str(payload.get("id", ""))
-                    app_name = str(payload.get("name", ""))
-                    app_kind = str(payload.get("kind", "native"))
-                    try:
-                        success, message = self.window.add_app_from_remote(app_id, app_name, app_kind)
-                        await websocket.send(json.dumps({
-                            "status": "ok" if success else "error",
-                            "type": "app_added",
-                            "success": success,
-                            "message": message
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to add app from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "app_added",
-                            "message": f"Failed to add app: {exc}"
                         }))
                     continue
 
@@ -6399,7 +6379,7 @@ class LauncherWindow(QMainWindow):
             else:
                 shutil.copy2(child, target)
 
-    def add_native_app(self, name: str, cmd: str):
+    def add_native_app(self, name: str, cmd: str, notify: bool = True):
         native_apps = self.config.setdefault("native_apps", [])
         native_apps.append({"name": name.strip(), "cmd": cmd.strip(), "icon": ""})
 
@@ -6407,15 +6387,18 @@ class LauncherWindow(QMainWindow):
             save_config(self.config_path, self.config)
         except Exception as exc:
             logging.exception("Failed to save config")
-            QMessageBox.critical(self, "Save Failed", f"Could not save config:\n{exc}")
+            if notify:
+                QTimer.singleShot(0, lambda: QMessageBox.critical(self, "Save Failed", f"Could not save config:\n{exc}"))
             native_apps.pop()
             return
 
-        self.populate_tiles()
-        self.focus_entry_tile("native", native_apps[-1])
-        QMessageBox.information(self, "Added", f"{name.strip()} is now available in Apps.")
+        # Schedule GUI updates on main thread
+        QTimer.singleShot(0, lambda: self.populate_tiles())
+        QTimer.singleShot(0, lambda: self.focus_entry_tile("native", native_apps[-1]))
+        if notify:
+            QTimer.singleShot(0, lambda: QMessageBox.information(self, "Added", f"{name.strip()} is now available in Apps."))
 
-    def add_web_app(self, name: str, url: str):
+    def add_web_app(self, name: str, url: str, notify: bool = True):
         normalized_url = self.normalize_url(url)
         web_apps = self.config.setdefault("web_apps", [])
         web_apps.append({"name": name.strip(), "url": normalized_url, "icon": ""})
@@ -6424,13 +6407,16 @@ class LauncherWindow(QMainWindow):
             save_config(self.config_path, self.config)
         except Exception as exc:
             logging.exception("Failed to save config")
-            QMessageBox.critical(self, "Save Failed", f"Could not save config:\n{exc}")
+            if notify:
+                QTimer.singleShot(0, lambda: QMessageBox.critical(self, "Save Failed", f"Could not save config:\n{exc}"))
             web_apps.pop()
             return
 
-        self.populate_tiles()
-        self.focus_entry_tile("web", web_apps[-1])
-        QMessageBox.information(self, "Added", f"{name.strip()} is now available in Apps.")
+        # Schedule GUI updates on main thread
+        QTimer.singleShot(0, lambda: self.populate_tiles())
+        QTimer.singleShot(0, lambda: self.focus_entry_tile("web", web_apps[-1]))
+        if notify:
+            QTimer.singleShot(0, lambda: QMessageBox.information(self, "Added", f"{name.strip()} is now available in Apps."))
 
     def keyPressEvent(self, event):
         if not self.tiles:
