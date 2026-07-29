@@ -103,7 +103,7 @@ android {
         applicationId 'com.guruswarupa.linuxtvremote'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 13
+        versionCode 15
         versionName "1.0.2"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
@@ -116,9 +116,9 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('/home/guru/keystore.jks')
+            storeFile file('keystore.jks')
             storePassword project.findProperty('KEYSTORE_PASSWORD') ?: System.getenv('KEYSTORE_PASSWORD') ?: 'changeit'
-            keyAlias project.findProperty('KEY_ALIAS') ?: System.getenv('KEY_ALIAS') ?: 'release'
+            keyAlias project.findProperty('KEY_ALIAS') ?: System.getenv('KEY_ALIAS') ?: 'key0'
             keyPassword project.findProperty('KEY_PASSWORD') ?: System.getenv('KEY_PASSWORD') ?: 'changeit'
         }
     }
