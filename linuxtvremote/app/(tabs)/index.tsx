@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { DeviceEventEmitter, EmitterSubscription } from 'react-native';
 import {
   Alert,
   AppState,
   AppStateStatus,
+  DeviceEventEmitter,
   Image as RNImage,
   Modal,
   PanResponder,
@@ -41,7 +42,7 @@ const DEMO_MODE_KEY = 'linuxtv_remote_demo_mode';
 const SYSTEMS_KEY = 'linuxtv_remote_systems';
 const ACTIVE_SYSTEM_ID_KEY = 'linuxtv_remote_active_system_id';
 const DEFAULT_PORT = '8765';
-const DEFAULT_KODI_PORT = '8080';
+const MACROS_KEY = 'linuxtv_macros';
 const REMOTE_REPEAT_DELAY_MS = 320;
 const REMOTE_REPEAT_INTERVAL_MS = 90;
 
@@ -50,7 +51,7 @@ type ScreenRepositoryState = RepositoryState & {
   status: ConnectionState;
 };
 
-type TabType = 'remote' | 'keyboard' | 'touchpad' | 'apps';
+type TabType = 'remote' | 'apps' | 'keyboard' | 'touchpad' | 'macros';
 
 type SavedSystem = {
   id: string;
@@ -59,6 +60,13 @@ type SavedSystem = {
   password: string;
   port: string;
   username: string;
+};
+
+type SavedMacro = {
+  id: string;
+  name: string;
+  createdAt: number;
+  actions: { payload: Record<string, any>; delayMs: number }[];
 };
 
 const DEFAULT_REPOSITORY_STATE: ScreenRepositoryState = {
@@ -73,34 +81,6 @@ const DEFAULT_REPOSITORY_STATE: ScreenRepositoryState = {
 const createSystemId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 const buildSystemName = (name: string, ipAddress: string) => name.trim() || ipAddress.trim();
-
-const encodeBase64 = (value: string) => {
-  // Use global btoa if available (web), otherwise use manual encoding for React Native
-  if (typeof globalThis.btoa !== 'undefined') {
-    return globalThis.btoa(value);
-  }
-  
-  // Fallback for React Native: manual base64 encoding
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let output = '';
-
-  for (let index = 0; index < value.length; index += 3) {
-    const byte1 = value.charCodeAt(index);
-    const hasByte2 = index + 1 < value.length;
-    const hasByte3 = index + 2 < value.length;
-    const byte2 = hasByte2 ? value.charCodeAt(index + 1) : 0;
-    const byte3 = hasByte3 ? value.charCodeAt(index + 2) : 0;
-
-    const chunk = (byte1 << 16) | (byte2 << 8) | byte3;
-
-    output += chars[(chunk >> 18) & 63];
-    output += chars[(chunk >> 12) & 63];
-    output += hasByte2 ? chars[(chunk >> 6) & 63] : '=';
-    output += hasByte3 ? chars[chunk & 63] : '=';
-  }
-
-  return output;
-};
 
 const parseStoredSystems = (storedValue: string | null): SavedSystem[] => {
   if (!storedValue) {
@@ -186,12 +166,15 @@ export default function RemoteScreen() {
   const [defaultSink, setDefaultSink] = useState('');
   const [soundLoading, setSoundLoading] = useState(false);
   const [soundMessage, setSoundMessage] = useState('');
-  const [availableApps, setAvailableApps] = useState<Array<{id: string; name: string; icon?: string; kind?: string; category?: string}>>([]);
-  const [addAppsLoading, setAddAppsLoading] = useState(false);
-  const [addAppsMessage, setAddAppsMessage] = useState('');
   const [addAppMode, setAddAppMode] = useState<'custom' | null>(null);
   const [selectedWifiNetwork, setSelectedWifiNetwork] = useState<{ssid: string; security: string} | null>(null);
   const repositoryRef = useRef<RemoteRepository | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isReplaying, setIsReplaying] = useState(false);
+  const [savedMacros, setSavedMacros] = useState<SavedMacro[]>([]);
+  const [editingMacro, setEditingMacro] = useState<SavedMacro | null>(null);
+  const [isSaveMacroVisible, setIsSaveMacroVisible] = useState(false);
+  const [newMacroName, setNewMacroName] = useState('');
   const repeatTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const touchpadGestureRef = useRef({ lastDx: 0, lastDy: 0 });
@@ -199,6 +182,7 @@ export default function RemoteScreen() {
 
   const applyRepositoryUpdate = (update: Partial<RepositoryState>) => {
     setRepositoryState((current) => ({ ...current, ...update }));
+    setIsRecording(repositoryRef.current?.isRecording() ?? false);
   };
 
   const createRepository = (isDemoMode: boolean) => {
@@ -545,24 +529,6 @@ export default function RemoteScreen() {
     sendSettingsRequest('get_sound');
   };
 
-  const fetchAvailableApps = () => {
-    setAddAppsLoading(true);
-    setAddAppsMessage('');
-    sendAction('GET_APPS');
-  };
-
-  const addAppToSystem = (appId: string, appName: string, kind: string) => {
-    setAddAppsLoading(true);
-    setAddAppsMessage(`Adding ${appName}...`);
-    sendSettingsRequest('add_app', { id: appId, name: appName, kind });
-  };
-
-  const showAddApp = () => {
-    setAddAppMode('custom');
-    setIsAddAppVisible(true);
-    setAvailableApps([]);
-  };
-
   const setSoundDevice = (sink: string) => {
     if (!sink) {
       setSoundMessage('Please select an audio device.');
@@ -584,6 +550,12 @@ export default function RemoteScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const showAddApp = () => {
+    setAddAppMode('custom');
+    setIsAddAppVisible(true);
+    setServerApps([]);
+  };
+
   const addNewApp = () => {
     if (!newAppName.trim()) {
       Alert.alert('Missing name', 'Please enter an app name.');
@@ -599,13 +571,6 @@ export default function RemoteScreen() {
       Alert.alert('Missing URL', 'Please enter the app URL.');
       return;
     }
-
-    const payload = {
-      type: 'add_app',
-      kind: newAppType,
-      name: newAppName.trim(),
-      ...(newAppType === 'native' ? { command: newAppCommand.trim() } : { url: newAppUrl.trim() }),
-    };
 
     if (repositoryRef.current) {
       repositoryRef.current.addApp({
@@ -705,11 +670,84 @@ export default function RemoteScreen() {
     }
   };
 
-  const setBrightness = (level: number) => {
-    setBrightnessLevel(level);
-    // Send WebSocket message to set brightness
-    sendSettingsRequest('set_brightness', { brightness: level });
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const toggleRecording = () => {
+    if (isRecording) {
+      const recordedActions = repositoryRef.current?.stopRecording() ?? [];
+      setIsRecording(false);
+      if (recordedActions.length > 0) {
+        setEditingMacro(null); // Ensure we are in "new macro" mode
+        setNewMacroName(`Macro ${new Date().toLocaleTimeString()}`);
+        setIsSaveMacroVisible(true);
+        // Temporarily store actions in a ref to be saved
+        (repositoryRef as any).current.tempRecordedActions = recordedActions;
+      } else {
+        Alert.alert('Recording Stopped', 'No actions were recorded.');
+      }
+    } else {
+      repositoryRef.current?.startRecording();
+      setIsRecording(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const saveOrUpdateMacro = async () => {
+    const name = newMacroName.trim();
+    if (!name) {
+      Alert.alert('Name Required', 'Please enter a name for the macro.');
+      return;
+    }
+
+    let nextMacros: SavedMacro[];
+
+    if (editingMacro) {
+      // Update existing macro
+      nextMacros = savedMacros.map(m =>
+        m.id === editingMacro.id ? { ...m, name } : m
+      );
+      Alert.alert('Macro Renamed', `Macro has been renamed to "${name}".`);
+    } else {
+      // Save new macro
+      const recordedActions = (repositoryRef as any).current.tempRecordedActions;
+      if (!recordedActions || recordedActions.length === 0) {
+        setIsSaveMacroVisible(false);
+        return;
+      }
+      const newMacro: SavedMacro = {
+        id: createSystemId(),
+        name: name || 'Untitled Macro',
+        createdAt: Date.now(),
+        actions: recordedActions,
+      };
+      nextMacros = [...savedMacros, newMacro];
+      (repositoryRef as any).current.tempRecordedActions = null;
+      Alert.alert('Macro Saved', `"${newMacro.name}" has been saved.`);
+    }
+
+    setSavedMacros(nextMacros);
+    await AsyncStorage.setItem(MACROS_KEY, JSON.stringify(nextMacros));
+      setIsSaveMacroVisible(false);
+    setNewMacroName('');
+    setEditingMacro(null);
+  };
+
+  const replayMacro = async (macro: SavedMacro) => {
+    setIsMenuVisible(false);
+    setIsReplaying(true);
+    await repositoryRef.current?.replayMacro(macro.actions);
+    setIsReplaying(false);
+  };
+
+  const openRenameMacroEditor = (macro: SavedMacro) => {
+    setEditingMacro(macro);
+    setNewMacroName(macro.name);
+    setIsSaveMacroVisible(true);
+    setIsMenuVisible(false); // Close main menu if open
+  };
+
+  const deleteMacro = async (macroId: string) => {
+    const nextMacros = savedMacros.filter(m => m.id !== macroId);
+    setSavedMacros(nextMacros);
+    await AsyncStorage.setItem(MACROS_KEY, JSON.stringify(nextMacros));
   };
 
   const confirmPowerAction = (action: 'SHUTDOWN' | 'REBOOT' | 'SLEEP' | 'UPDATE') => {
@@ -867,7 +905,19 @@ export default function RemoteScreen() {
       }
     };
 
+    const loadMacros = async () => {
+      try {
+        const storedMacros = await AsyncStorage.getItem(MACROS_KEY);
+        if (storedMacros) {
+          setSavedMacros(JSON.parse(storedMacros));
+        }
+      } catch (e) {
+        console.error('Failed to load macros', e);
+      }
+    };
+
     void loadSavedSetup();
+    void loadMacros();
 
     return () => {
       active = false;
@@ -926,19 +976,7 @@ export default function RemoteScreen() {
       setSoundMessage(repositoryState.soundMessage || '');
       setSoundLoading(false);
     }
-    if (repositoryState.addAppsMessage !== undefined) {
-      setAddAppsMessage(repositoryState.addAppsMessage || '');
-      setAddAppsLoading(false);
-    }
-  }, [repositoryState.soundSpeakers, repositoryState.defaultSink, repositoryState.soundMessage, repositoryState.addAppsMessage]);
-
-  // Update available apps when repository state changes
-  useEffect(() => {
-    if (repositoryState.appsList && repositoryState.appsList.length > 0) {
-      setAvailableApps(repositoryState.appsList);
-      setAddAppsLoading(false);
-    }
-  }, [repositoryState.appsList]);
+  }, [repositoryState.soundSpeakers, repositoryState.defaultSink, repositoryState.soundMessage]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
@@ -1051,6 +1089,7 @@ export default function RemoteScreen() {
     { key: 'apps', label: 'Apps', icon: 'grid' },
     { key: 'keyboard', label: 'Keyboard', icon: 'text' },
     { key: 'touchpad', label: 'Touchpad', icon: 'hand-left' },
+    { key: 'macros', label: 'Macros', icon: 'recording' },
   ];
 
   const touchpadResponder = useRef(
@@ -1085,6 +1124,18 @@ export default function RemoteScreen() {
         {repositoryState.isDemoMode ? (
           <View style={styles.demoBanner}>
             <Text style={styles.demoBannerText}>Demo Mode</Text>
+          </View>
+        ) : null}
+        {isRecording ? (
+          <View style={[styles.demoBanner, { backgroundColor: '#da3633' }]}>
+            <Ionicons name="mic-circle" size={16} color="#ffffff" />
+            <Text style={[styles.demoBannerText, { color: '#ffffff' }]}>RECORDING</Text>
+          </View>
+        ) : null}
+        {isReplaying ? (
+          <View style={[styles.demoBanner, { backgroundColor: '#1f6feb' }]}>
+            <Ionicons name="play-circle" size={16} color="#ffffff" />
+            <Text style={[styles.demoBannerText, { color: '#ffffff' }]}>REPLAYING MACRO</Text>
           </View>
         ) : null}
 
@@ -1444,6 +1495,20 @@ export default function RemoteScreen() {
                     />
                   </View>
 
+                  {/* Macro Recording Controls */}
+                  <View style={styles.actionButtonsRow}>
+                    <ControlButton
+                      icon={isRecording ? "stop-circle" : "mic-circle"}
+                      label={isRecording ? "Stop Recording" : "Record Macro"}
+                      onPress={() => {
+                        toggleRecording();
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      }}
+                      style={[styles.actionButtonSmall, isRecording && styles.recordingButton]}
+                      textStyle={isRecording ? styles.closeButtonTextSmall : styles.actionButtonText}
+                    />
+                  </View>
+
                   {/* Bottom Actions including Mute */}
                   <View style={styles.actionButtonsRow}>
                     <ControlButton
@@ -1740,6 +1805,74 @@ export default function RemoteScreen() {
                   </View>
                 </View>
               </View>
+            )}
+
+            {activeTab === 'macros' && (
+              <ScrollView
+                style={styles.remoteScroll}
+                contentContainerStyle={styles.remoteScrollContent}
+                showsVerticalScrollIndicator={false}>
+                <View style={styles.appsContainer}>
+                  <View style={styles.appsHeader}>
+                    <Text style={styles.appsTitle}>Macros</Text>
+                    <View style={styles.appsHeaderButtons}>
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.refreshButton,
+                          pressed && styles.pressed,
+                          isRecording && { backgroundColor: '#da3633', borderColor: '#da3633' },
+                        ]}
+                        onPress={toggleRecording}>
+                        <Ionicons
+                          name={isRecording ? 'stop-circle' : 'mic-circle'}
+                          size={20}
+                          color="#ffffff"
+                        />
+                      </Pressable>
+                    </View>
+                  </View>
+                  <Text style={styles.appsSubtitle}>
+                    {isRecording
+                      ? 'Recording actions... Press stop to save.'
+                      : 'Record and replay sequences of actions.'}
+                  </Text>
+
+                  {savedMacros.length === 0 && !isRecording && (
+                    <View style={styles.emptyApps}>
+                      <Ionicons name="list" size={64} color="#8b949e" />
+                      <Text style={styles.emptyAppsText}>No macros saved</Text>
+                      <Text style={styles.emptyAppsSubtext}>
+                        Press the record button to create one.
+                      </Text>
+                    </View>
+                  )}
+
+                  {savedMacros.map(macro => (
+                    <View key={macro.id} style={styles.systemRow}>
+                      <Pressable style={styles.systemRowLeft} onPress={() => replayMacro(macro)}>
+                        <Ionicons name="play-circle" size={24} color="#58a6ff" />
+                        <View style={styles.systemRowText}>
+                          <Text style={styles.systemName}>{macro.name}</Text>
+                          <Text style={styles.systemMeta}>{macro.actions.length} actions</Text>
+                        </View>
+                      </Pressable>
+                      <Pressable style={styles.bluetoothRemoveButton} onPress={() => openRenameMacroEditor(macro)}>
+                        <Ionicons name="create-outline" size={18} color="#c9d1d9" />
+                      </Pressable>
+                      <Pressable
+                        style={styles.bluetoothRemoveButton}
+                        onPress={() => {
+                          Alert.alert('Delete Macro?', `Are you sure you want to delete "${macro.name}"?`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Delete', style: 'destructive', onPress: () => deleteMacro(macro.id) },
+                          ]);
+                        }}>
+                        <Ionicons name="trash-outline" size={18} color="#f85149" />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
             )}
 
             {activeTab === 'touchpad' && (
@@ -2039,7 +2172,7 @@ export default function RemoteScreen() {
               <View style={styles.menuItemContent}>
                 <Ionicons name="log-out" size={20} color="#f85149" />
                 <Text style={styles.menuItemDangerText}>
-                  {repositoryState.isDemoMode ? 'Exit Demo' : 'Remove All Systems'}
+                  {repositoryState.isDemoMode ? 'Exit Demo' : 'Logout & Clear Systems'}
                 </Text>
               </View>
             </Pressable>
@@ -2425,18 +2558,54 @@ export default function RemoteScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Save Macro Modal */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={isSaveMacroVisible}
+        onRequestClose={() => setIsSaveMacroVisible(false)}>
+        <Pressable
+          style={styles.editorOverlay}
+          onPress={() => setIsSaveMacroVisible(false)}>
+          <Pressable style={styles.editorSheet} onPress={() => undefined}>
+            <Text style={styles.editorTitle}>{editingMacro ? 'Rename Macro' : 'Save Macro'}</Text>
+            <Text style={styles.editorSubtitle}>
+              {editingMacro ? 'Enter a new name for this macro.' : 'Give this recorded sequence of actions a name.'}
+            </Text>
+            <TextInput
+              value={newMacroName}
+              onChangeText={setNewMacroName}
+              placeholder="Macro name"
+              placeholderTextColor="#8b949e"
+              autoCapitalize="words"
+              style={styles.input}
+            />
+            <Pressable
+              style={[styles.actionButton, styles.primaryButton]}
+              onPress={saveOrUpdateMacro}>
+              <Text style={styles.primaryButtonText}>{editingMacro ? 'Rename' : 'Save Macro'}</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.actionButton, styles.ghostButton]}
+              onPress={() => setIsSaveMacroVisible(false)}>
+              <Text style={styles.ghostButtonText}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 function ControlButton({
   label,
-  icon,
   onPress,
   onPressIn,
   onPressOut,
   style,
   textStyle,
+  icon,
   iconSize = 20,
 }: {
   label: string;
@@ -2445,7 +2614,7 @@ function ControlButton({
   onPressIn?: () => void;
   onPressOut?: () => void;
   style?: StyleProp<ViewStyle>;
-  textStyle?: StyleProp<TextStyle>;
+  textStyle?: StyleProp<TextStyle>
   iconSize?: number;
 }) {
   return (
@@ -2454,7 +2623,7 @@ function ControlButton({
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}>
-      {icon && <Ionicons name={icon} size={iconSize} color="#c9d1d9" style={styles.buttonIcon} />}
+      {icon && <Ionicons name={icon} size={iconSize} color="#c9d1d9" style={styles.buttonIcon}/>}
       <Text style={textStyle}>{label}</Text>
     </Pressable>
   );
@@ -2472,6 +2641,7 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     backgroundColor: '#0a0e17',
   },
+  // ... existing styles
   demoBanner: {
     alignSelf: 'flex-start',
     backgroundColor: '#f59e0b',
@@ -2479,6 +2649,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   demoBannerText: {
     color: '#0a0e17',
@@ -3117,6 +3290,10 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
   },
+  recordingButton: {
+    backgroundColor: '#da3633',
+    borderColor: '#da3633',
+  },
   fullscreenButtonSmall: {
     backgroundColor: '#21262d',
     borderColor: '#30363d',
@@ -3736,7 +3913,7 @@ const styles = StyleSheet.create({
   bluetoothActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   bluetoothConnectButton: {
     backgroundColor: '#238636',

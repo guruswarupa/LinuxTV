@@ -59,6 +59,10 @@ export interface RemoteRepository {
   sendSettingsRequest(type: string, payload?: Record<string, any>): void;
   addApp(app: { type: string; name: string; command?: string; url?: string }): void;
   removeApp(appId: string): void;
+  startRecording(): void;
+  stopRecording(): { payload: Record<string, any>; delayMs: number }[];
+  replayMacro(actions: { payload: Record<string, any>; delayMs: number }[]): Promise<void>;
+  isRecording(): boolean;
 }
 
 type RepositoryListener = (update: Partial<RepositoryState>) => void;
@@ -167,6 +171,25 @@ export class DemoRepository implements RemoteRepository {
       lastMessage: `Demo: Removed app ${appId}`,
     });
   }
+
+  startRecording(): void {
+    this.emit({ lastMessage: 'Demo: Started recording' });
+  }
+
+  stopRecording(): { payload: Record<string, any>; delayMs: number }[] {
+    this.emit({ lastMessage: 'Demo: Stopped recording' });
+    return [];
+  }
+
+  async replayMacro(
+    _actions: { payload: Record<string, any>; delayMs: number }[]
+  ): Promise<void> {
+    this.emit({ lastMessage: 'Demo: Replaying macro' });
+  }
+
+  isRecording(): boolean {
+    return false;
+  }
 }
 
 export class RealServerRepository implements RemoteRepository {
@@ -189,6 +212,9 @@ export class RealServerRepository implements RemoteRepository {
   };
   private shouldReconnect = false;
   private passwordHash: string | null = null; // Store hashed password for challenge-response
+  private isRecordingState = false;
+  private recordedActions: Array<{ payload: Record<string, any>; delayMs: number }> = [];
+  private lastRecordTime = 0;
 
   constructor(private readonly emit: RepositoryListener) {}
 
@@ -446,6 +472,40 @@ export class RealServerRepository implements RemoteRepository {
     this.sendPayload(payload, 'Remove App');
   }
 
+  startRecording(): void {
+    this.isRecordingState = true;
+    this.recordedActions = [];
+    this.lastRecordTime = Date.now();
+    this.emit({ lastMessage: 'Recording started' });
+  }
+
+  stopRecording(): { payload: Record<string, any>; delayMs: number }[] {
+    this.isRecordingState = false;
+    this.emit({ lastMessage: 'Recording stopped' });
+    return this.recordedActions;
+  }
+
+  isRecording(): boolean {
+    return this.isRecordingState;
+  }
+
+  async replayMacro(actions: { payload: Record<string, any>; delayMs: number }[]): Promise<void> {
+    if (this.isRecordingState) {
+      console.warn('Cannot replay a macro while recording.');
+      return;
+    }
+
+    this.emit({ lastMessage: 'Replaying macro...' });
+
+    for (const action of actions) {
+      if (action.delayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, action.delayMs));
+      }
+      this.sendPayload(action.payload, 'Replay Action', { updateLastMessage: false });
+    }
+    this.emit({ lastMessage: 'Macro replay finished.' });
+  }
+
   private async authenticate() {
     const activeSocket = this.socket;
     const selectedUsername = this.latestConfig.username.trim();
@@ -530,6 +590,19 @@ export class RealServerRepository implements RemoteRepository {
       trackLastAction = true,
       updateLastMessage = true,
     } = options ?? {};
+
+    if (this.isRecordingState) {
+      // Skip recording pointer move events to avoid flooding the macro
+      if (!(payload.type === 'pointer' && payload.event === 'move')) {
+        const now = Date.now();
+        const delayMs = this.lastRecordTime > 0 ? now - this.lastRecordTime : 0;
+        // Deep copy of payload
+        this.recordedActions.push({ payload: JSON.parse(JSON.stringify(payload)), delayMs });
+        this.lastRecordTime = now;
+      }
+    }
+
+
 
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       this.emit({ lastMessage: 'Waiting for LinuxTV to come online' });
