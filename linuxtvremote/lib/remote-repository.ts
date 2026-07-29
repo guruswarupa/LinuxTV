@@ -38,6 +38,7 @@ export type RepositoryState = {
   defaultSink?: string;
   soundMessage?: string;
   addAppsMessage?: string;
+  addAppsSuccess?: boolean;
   kodiImage?: string;
   kodiImagePath?: string;
   volumeLevel?: number;
@@ -830,6 +831,7 @@ export class RealServerRepository implements RemoteRepository {
         if (payload.type === 'app_added') {
           this.emit({
             addAppsMessage: payload.message || '',
+            addAppsSuccess: payload.status === 'ok',
           });
           return;
         }
