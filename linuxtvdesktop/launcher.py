@@ -1694,62 +1694,6 @@ class WebSocketControlServer(threading.Thread):
                         "apps": apps_list
                     }))
                     continue
-                
-                # Handle Kodi Image request - fetch images with proper auth
-                if message_type == "get_kodi_image":
-                    image_path = str(payload.get("path", ""))
-                    if not image_path:
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "kodi_image",
-                            "message": "No image path provided"
-                        }))
-                        continue
-                    
-                    try:
-                        # Get Kodi config
-                        kodi_config = self.window.config.get('kodi', {})
-                        kodi_host = kodi_config.get('host', 'localhost')
-                        kodi_port = kodi_config.get('port', '8080')
-                        kodi_user = kodi_config.get('username', '')
-                        kodi_pass = kodi_config.get('password', '')
-                        
-                        # Construct Kodi image URL
-                        kodi_image_url = f"http://{kodi_host}:{kodi_port}/image/{image_path}"
-                        
-                        logging.info("Fetching Kodi image: %s", kodi_image_url)
-                        
-                        # Create request with authentication
-                        req = Request(kodi_image_url)
-                        if kodi_user or kodi_pass:
-                            auth_string = f"{kodi_user}:{kodi_pass}"
-                            auth_bytes = base64.b64encode(auth_string.encode('utf-8')).decode('utf-8')
-                            req.add_header('Authorization', f'Basic {auth_bytes}')
-                        
-                        # Fetch image from Kodi
-                        with urlopen(req, timeout=10) as response:
-                            image_data = response.read()
-                            content_type = response.headers.get('Content-Type', 'image/png')
-                            
-                            # Convert to base64 to send via WebSocket
-                            image_b64 = base64.b64encode(image_data).decode('utf-8')
-                            
-                            await websocket.send(json.dumps({
-                                "status": "ok",
-                                "type": "kodi_image",
-                                "image": f"data:{content_type};base64,{image_b64}",
-                                "path": image_path
-                            }))
-                            logging.info("Successfully fetched Kodi image")
-                    except Exception as e:
-                        logging.error("Failed to fetch Kodi image: %s", e)
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "kodi_image",
-                            "message": f"Failed to fetch image: {str(e)}",
-                            "path": image_path
-                        }))
-                    continue
 
                 # Handle add app request
                 if message_type == "add_app":
