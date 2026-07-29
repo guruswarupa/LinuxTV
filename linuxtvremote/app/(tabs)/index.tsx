@@ -167,6 +167,8 @@ export default function RemoteScreen() {
   const [soundLoading, setSoundLoading] = useState(false);
   const [soundMessage, setSoundMessage] = useState('');
   const [addAppMode, setAddAppMode] = useState<'custom' | null>(null);
+  const [addAppsMessage, setAddAppsMessage] = useState('');
+  const [addAppsSuccess, setAddAppsSuccess] = useState<boolean | null>(null);
   const [selectedWifiNetwork, setSelectedWifiNetwork] = useState<{ssid: string; security: string} | null>(null);
   const repositoryRef = useRef<RemoteRepository | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -572,6 +574,10 @@ export default function RemoteScreen() {
       return;
     }
 
+    // Reset response state
+    setAddAppsSuccess(null);
+    setAddAppsMessage('');
+
     if (repositoryRef.current) {
       repositoryRef.current.addApp({
         type: newAppType,
@@ -587,12 +593,24 @@ export default function RemoteScreen() {
     setNewAppCommand('');
     setNewAppUrl('');
     setIsAddAppVisible(false);
-    
-    Alert.alert('App Added', 'The app has been added to LinuxTV. Refresh the list to see it.');
-    
-    // Auto refresh after adding
-    setTimeout(() => fetchApps(), 1000);
   };
+
+  // Show success/error alert when server responds
+  useEffect(() => {
+    if (addAppsSuccess !== null) {
+      if (addAppsSuccess) {
+        Alert.alert('App Added', addAppsMessage || 'The app has been added to LinuxTV. Refresh the list to see it.');
+        // Auto refresh after adding
+        setTimeout(() => fetchApps(), 1000);
+      } else {
+        Alert.alert('Add App Failed', addAppsMessage || 'Failed to add app. Please try again.');
+      }
+      // Reset state after showing alert
+      setAddAppsSuccess(null);
+      setAddAppsMessage('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addAppsSuccess, addAppsMessage]);
 
   const removeApp = (appId: string, appName: string) => {
     Alert.alert(
@@ -1023,6 +1041,16 @@ export default function RemoteScreen() {
       setBrightnessLevel(repositoryState.brightnessLevel);
     }
   }, [repositoryState.brightnessLevel]);
+
+  // Handle add app response from server
+  useEffect(() => {
+    if (repositoryState.addAppsMessage !== undefined) {
+      setAddAppsMessage(repositoryState.addAppsMessage);
+    }
+    if (repositoryState.addAppsSuccess !== undefined) {
+      setAddAppsSuccess(repositoryState.addAppsSuccess);
+    }
+  }, [repositoryState.addAppsMessage, repositoryState.addAppsSuccess]);
 
   // Keep app awake when connected to maintain WebSocket connection
   useEffect(() => {
