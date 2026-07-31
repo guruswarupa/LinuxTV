@@ -168,6 +168,7 @@ DEFAULT_CONFIG = {
     "web_apps": [
         {"name": "YouTube", "url": "https://www.youtube.com", "icon": "icons/youtube.png"},
     ],
+    "categories": {},  # User-defined categories: {"category_name": ["app_name", ...]}
     "auth": {
         "username": "",
         "password_hash": "",  # PBKDF2 hash for storage
@@ -764,10 +765,12 @@ def normalize_config(config):
 
     native_apps = normalized.get("native_apps")
     web_apps = normalized.get("web_apps")
+    categories = normalized.get("categories")
     auth = normalized.get("auth")
     auto_launch = normalized.get("auto_launch")
     normalized["native_apps"] = native_apps if isinstance(native_apps, list) else list(DEFAULT_CONFIG["native_apps"])
     normalized["web_apps"] = web_apps if isinstance(web_apps, list) else list(DEFAULT_CONFIG["web_apps"])
+    normalized["categories"] = categories if isinstance(categories, dict) else dict(DEFAULT_CONFIG["categories"])
     normalized["auth"] = auth if isinstance(auth, dict) else dict(DEFAULT_CONFIG["auth"])
     normalized["auto_launch"] = auto_launch if isinstance(auto_launch, dict) else dict(DEFAULT_CONFIG["auto_launch"])
     return normalized
@@ -3670,6 +3673,14 @@ class LauncherWindow(QMainWindow):
         self._icon_bridge.icon_ready.connect(self._apply_resolved_icon)
         self._scroll_anim = None
         self._row_scroll_anim = None
+        
+        # Search and filtering state
+        self.search_filter = ""
+        self.is_search_active = False
+        
+        # Loading overlay for visual feedback
+        self.loading_overlay = None
+        self.loading_label = None
 
         self.process_monitor = QTimer(self)
         self.process_monitor.setInterval(500)
@@ -3989,6 +4000,27 @@ class LauncherWindow(QMainWindow):
         hero_top_row.addWidget(title)
 
         hero_top_row.addStretch(1)
+        
+        # Search input field
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("🔍 Search apps...")
+        self.search_input.setObjectName("searchInput")
+        self.search_input.setFont(QFont("Sans Serif", max(13, self.ui_metrics["settings_button_font"] - 5)))
+        self.search_input.setFixedWidth(250)
+        self.search_input.setStyleSheet("""
+            QLineEdit {
+                background-color: #1e293b;
+                color: #f1f5f9;
+                border: 1px solid #334155;
+                border-radius: 8px;
+                padding: 8px 12px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #33c3a0;
+            }
+        """)
+        self.search_input.textChanged.connect(self.on_search_text_changed)
+        hero_top_row.addWidget(self.search_input)
 
         # IP Address and WiFi SSID label
         ip_address = self.get_ip_address()
@@ -4653,7 +4685,7 @@ class LauncherWindow(QMainWindow):
         self._icon_request_token += 1
         request_token = self._icon_request_token
 
-        categories = self.get_categorized_entries()
+        categories = self.get_categorized_entries(self.search_filter)
         for category_name, entries in categories:
             section = QWidget()
             section.setProperty("rowSection", "true")
@@ -4856,10 +4888,80 @@ class LauncherWindow(QMainWindow):
 
         self.reset_auto_launch_timer()
 
-    def get_categorized_entries(self):
+    def show_loading_overlay(self, message: str = "Loading..."):
+        """Show a loading overlay with message"""
+        if self.loading_overlay is None:
+            self.loading_overlay = QWidget(self)
+            self.loading_overlay.setObjectName("loadingOverlay")
+            self.loading_overlay.setStyleSheet("""
+                QWidget#loadingOverlay {
+                    background-color: rgba(15, 23, 42, 0.9);
+                    border-radius: 12px;
+                }
+            """)
+            self.loading_overlay.setFixedSize(400, 200)
+            
+            layout = QVBoxLayout(self.loading_overlay)
+            layout.setAlignment(Qt.AlignCenter)
+            
+            self.loading_label = QLabel(message)
+            self.loading_label.setObjectName("loadingLabel")
+            self.loading_label.setStyleSheet("""
+                QLabel {
+                    color: #f1f5f9;
+                    font-size: 18px;
+                    font-weight: bold;
+                    background-color: transparent;
+                }
+            """)
+            self.loading_label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(self.loading_label)
+            
+            # Center the overlay
+            self.loading_overlay.setParent(self)
+        
+        self.loading_label.setText(message)
+        
+        # Center the overlay on the main window
+        if self.loading_overlay.parent() is None:
+            self.loading_overlay.setParent(self)
+        
+        x = (self.width() - self.loading_overlay.width()) // 2
+        y = (self.height() - self.loading_overlay.height()) // 2
+        self.loading_overlay.move(x, y)
+        self.loading_overlay.show()
+        self.loading_overlay.raise_()
+    
+    def hide_loading_overlay(self):
+        """Hide the loading overlay"""
+        if self.loading_overlay:
+            self.loading_overlay.hide()
+
+    def on_search_text_changed(self, text: str):
+        """Handle search text changes"""
+        self.search_filter = text
+        self.is_search_active = bool(text.strip())
+        
+        # Save focus state
+        focused_widget = QApplication.focusWidget()
+        
+        self.populate_tiles()
+        
+        # Restore focus to search input if it was focused
+        if focused_widget == self.search_input:
+            self.search_input.setFocus()
+            # Move cursor to end
+            self.search_input.setCursorPosition(len(text))
+        elif self.tiles:
+            self.focus_first_tile()
+
+    def get_categorized_entries(self, filter_text: str = ""):
         native_entries = []
         web_entries = []
         favorites = self.config.get("favorites", [])
+        
+        # Get all categories from config
+        user_categories = self.config.get("categories", {})
 
         for idx, app in enumerate(self.config.get("native_apps", [])):
             if not is_installed(app.get("cmd", "")):
@@ -4867,6 +4969,12 @@ class LauncherWindow(QMainWindow):
             subtitle = app.get("cmd", "").split()[0] if app.get("cmd") else "Application"
             app_id = self.get_app_id(app)
             is_favorited = any(f.get("id") == app_id and f.get("kind") == "native" for f in favorites)
+            
+            # Apply search filter
+            app_name = app.get("name", "").lower()
+            if filter_text and filter_text.lower() not in app_name:
+                continue
+                
             native_entries.append({
                 "kind": "native",
                 "item": app,
@@ -4881,6 +4989,12 @@ class LauncherWindow(QMainWindow):
             subtitle = url.replace("https://", "").replace("http://", "")
             app_id = self.get_app_id(app)
             is_favorited = any(f.get("id") == app_id and f.get("kind") == "web" for f in favorites)
+            
+            # Apply search filter
+            app_name = app.get("name", "").lower()
+            if filter_text and filter_text.lower() not in app_name:
+                continue
+            
             web_entries.append({
                 "kind": "web",
                 "item": app,
@@ -4895,10 +5009,35 @@ class LauncherWindow(QMainWindow):
         web_entries.sort(key=lambda x: (not x.get("favorited", False), x.get("original_index", 0)))
 
         categories = []
-        if native_entries:
-            categories.append(("Native Apps", native_entries))
-        if web_entries:
-            categories.append(("Web Apps", web_entries))
+        
+        # Add Favorites row if not filtering and there are favorited apps
+        if not filter_text:
+            favorite_entries = [e for e in native_entries + web_entries if e.get("favorited", False)]
+            if favorite_entries:
+                categories.append(("⭐ Favorites", favorite_entries))
+        
+        # Add user-defined categories if not filtering
+        if not filter_text and user_categories:
+            for category_name, app_names in user_categories.items():
+                category_entries = []
+                for entry in native_entries + web_entries:
+                    if entry["item"].get("name") in app_names:
+                        category_entries.append(entry)
+                if category_entries:
+                    categories.append((category_name, category_entries))
+        
+        # Add default categories if no filter or no user categories
+        if not filter_text:
+            if native_entries:
+                categories.append(("Native Apps", native_entries))
+            if web_entries:
+                categories.append(("Web Apps", web_entries))
+        else:
+            # When filtering, show all matching apps in a single category
+            all_filtered = native_entries + web_entries
+            if all_filtered:
+                categories.append((f"Search Results: '{filter_text}'", all_filtered))
+        
         return categories
 
     def get_installed_apps(self):
@@ -5423,7 +5562,15 @@ class LauncherWindow(QMainWindow):
                 return
 
         # Hash and save credentials
-        self.config["auth"] = hash_remote_credentials(username, password)
+        password_hash, password_salt = hash_remote_password(password)
+        # Also generate simple SHA-256 hash for challenge-response authentication
+        password_simple_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        self.config["auth"] = {
+            "username": username,
+            "password_hash": password_hash,
+            "password_salt": password_salt,
+            "password_simple_hash": password_simple_hash
+        }
         save_config(self.config_path, self.config)
         QMessageBox.information(self, "Saved", "Remote login credentials updated.")
 
@@ -6425,7 +6572,16 @@ class LauncherWindow(QMainWindow):
         key = event.key()
         self.reset_auto_launch_timer()
         if key == Qt.Key_Escape:
-            self.close()
+            # Show confirmation dialog before closing
+            reply = QMessageBox.question(
+                self, 
+                "Exit LinuxTV",
+                "Are you sure you want to exit LinuxTV?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                self.close()
             return
 
         if key in (Qt.Key_Right, Qt.Key_Left, Qt.Key_Down, Qt.Key_Up):
@@ -7263,11 +7419,11 @@ class LauncherWindow(QMainWindow):
         
         if is_wifi:
             if wifi_ssid:
-                ip_text = f"WiFi: {wifi_ssid} • {ip_address} • {current_time}"
+                ip_text = f"{wifi_ssid} • {ip_address} • {current_time}"
             else:
-                ip_text = f"WiFi • {ip_address} • {current_time}"
+                ip_text = f"{ip_address} • {current_time}"
         else:
-            ip_text = f"Ethernet • {ip_address} • {current_time}"
+            ip_text = f"{ip_address} • {current_time}"
         
         self.ip_label.setText(ip_text)
 
@@ -7289,6 +7445,19 @@ class LauncherWindow(QMainWindow):
             target_col = min(self.current_col, len(self.tile_rows[target_row]) - 1)
         else:
             return
+
+        # Add grid/wrap navigation for better discoverability
+        # If at the end of a row and going right, wrap to next row
+        if direction == "RIGHT" and target_col == len(self.tile_rows[target_row]) - 1:
+            if target_row < len(self.tile_rows) - 1:
+                target_row += 1
+                target_col = 0
+        
+        # If at the start of a row and going left, wrap to previous row
+        if direction == "LEFT" and target_col == 0:
+            if target_row > 0:
+                target_row -= 1
+                target_col = len(self.tile_rows[target_row]) - 1
 
         self.focus_tile_at(target_row, target_col)
         self.ensure_current_tile_visible()
@@ -7378,6 +7547,10 @@ class LauncherWindow(QMainWindow):
             return
 
         logging.info("Launching %s: %s", item.get("name"), command)
+        
+        # Show loading overlay
+        self.show_loading_overlay(f"Launching {item.get('name', 'app')}...")
+        
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
             # Drop out of the way so the launched app receives focus/input.
@@ -7406,8 +7579,12 @@ class LauncherWindow(QMainWindow):
                 args=(self.active_process.pid,),
                 daemon=True,
             ).start()
+            
+            # Hide loading overlay after a short delay
+            QTimer.singleShot(2000, self.hide_loading_overlay)
         except Exception:
             logging.exception("App launch failed")
+            self.hide_loading_overlay()
             self.finish_active_process()
 
 
