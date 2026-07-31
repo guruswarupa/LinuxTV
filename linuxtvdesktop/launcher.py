@@ -7433,10 +7433,32 @@ class LauncherWindow(QMainWindow):
 
         if direction == "RIGHT":
             target_row = self.current_row
-            target_col = min(self.current_col + 1, len(self.tile_rows[target_row]) - 1)
+            # Check if we're at the last column BEFORE moving
+            if self.current_col >= len(self.tile_rows[target_row]) - 1:
+                # At last column, try to wrap to next row
+                if target_row < len(self.tile_rows) - 1:
+                    target_row += 1
+                    target_col = 0
+                else:
+                    # No next row, stay at last column
+                    target_col = self.current_col
+            else:
+                # Not at last column, move right normally
+                target_col = self.current_col + 1
         elif direction == "LEFT":
             target_row = self.current_row
-            target_col = max(self.current_col - 1, 0)
+            # Check if we're at the first column BEFORE moving
+            if self.current_col <= 0:
+                # At first column, try to wrap to previous row
+                if target_row > 0:
+                    target_row -= 1
+                    target_col = len(self.tile_rows[target_row]) - 1
+                else:
+                    # No previous row, stay at first column
+                    target_col = 0
+            else:
+                # Not at first column, move left normally
+                target_col = self.current_col - 1
         elif direction == "DOWN":
             target_row = min(self.current_row + 1, len(self.tile_rows) - 1)
             target_col = min(self.current_col, len(self.tile_rows[target_row]) - 1)
@@ -7445,19 +7467,6 @@ class LauncherWindow(QMainWindow):
             target_col = min(self.current_col, len(self.tile_rows[target_row]) - 1)
         else:
             return
-
-        # Add grid/wrap navigation for better discoverability
-        # If at the end of a row and going right, wrap to next row
-        if direction == "RIGHT" and target_col == len(self.tile_rows[target_row]) - 1:
-            if target_row < len(self.tile_rows) - 1:
-                target_row += 1
-                target_col = 0
-        
-        # If at the start of a row and going left, wrap to previous row
-        if direction == "LEFT" and target_col == 0:
-            if target_row > 0:
-                target_row -= 1
-                target_col = len(self.tile_rows[target_row]) - 1
 
         self.focus_tile_at(target_row, target_col)
         self.ensure_current_tile_visible()
