@@ -117,6 +117,16 @@ create missing parent directories).
   needed firmware packages explicitly (`firmware-linux-nonfree`,
   `firmware-iwlwifi`, etc.), so this auto-detection was pure redundant
   overhead even before it started failing.
+- `build-iso.sh` also now passes `--initsystem systemd`. Unset, this
+  live-build version defaults to `sysvinit`, so `lb_chroot_live-packages`
+  pulled in `live-config-sysvinit` even though the image is systemd-based
+  (`systemd-sysv` is already part of the base install) -- a straight package
+  conflict (`live-config-sysvinit` needs `sysvinit-core`, which conflicts
+  with `systemd-sysv`), so apt's solver had no valid resolution
+  (`pkgProblemResolver::Resolve generated breaks`, exit 100 at
+  `lb_chroot_live-packages`). `--initsystem systemd` tells it to pull in
+  `live-config-systemd` instead, matching what the rest of the image
+  actually uses.
 - The Android workflow downloads a fresh Android SDK cmdline-tools build
   itself rather than relying on `android-actions/setup-android@v3` (fails
   trying to touch the removed legacy `tools` package) or whatever SDK
