@@ -67,8 +67,20 @@ jobs:
       # Expo 54 project needs.
       - name: Ensure required Android SDK packages
         run: |
-          SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
-          SDKMANAGER="$(command -v sdkmanager || find "$SDK_ROOT/cmdline-tools" -maxdepth 2 -name sdkmanager | sort -V | tail -1)"
+          # ANDROID_SDK_ROOT/ANDROID_HOME aren't reliably set on this runner
+          # image outside of actions that explicitly export them, so fall
+          # back to the known on-disk location (confirmed from a prior run's
+          # log: /usr/local/lib/android/sdk/cmdline-tools/16.0/bin/sdkmanager)
+          # and search broadly rather than assuming a version directory name.
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(command -v sdkmanager 2>/dev/null || true)"
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$SDK_ROOT" -maxdepth 3 -type f -name sdkmanager 2>/dev/null | sort -V | tail -1)"
+          fi
+          if [ -z "$SDKMANAGER" ]; then
+            echo "::error::Could not locate sdkmanager under $SDK_ROOT"
+            exit 1
+          fi
           echo "Using sdkmanager: $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
           "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006"
