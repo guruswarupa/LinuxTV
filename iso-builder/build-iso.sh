@@ -76,7 +76,8 @@ lb config \
   --mirror-bootstrap http://deb.debian.org/debian/ \
   --mirror-chroot http://deb.debian.org/debian/ \
   --mirror-binary http://deb.debian.org/debian/ \
-  --security false
+  --security false \
+  --firmware-chroot false
 
 lb build 2>&1 | tee "$OUTPUT_LOG"
 

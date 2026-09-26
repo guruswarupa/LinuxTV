@@ -103,6 +103,20 @@ create missing parent directories).
   updates until one is added by hand (`deb http://security.debian.org/debian-security trixie-security main contrib non-free non-free-firmware`)
   or via a `config/hooks/live/` postinst hook — worth doing at some point,
   just not part of unblocking this CI failure.
+- `build-iso.sh` also now passes `--firmware-chroot false`. This live-build
+  version's firmware auto-detection (`lb_chroot_linux-image`, only runs when
+  this flag is true, which is its default) fetches
+  `<mirror>/dists/trixie/Contents-amd64.gz` to scan for files under
+  `lib/firmware/` and pick matching firmware packages automatically — but
+  that flat top-level `Contents-<arch>.gz` path is the pre-2023 Debian
+  archive layout; Debian now publishes it per-component
+  (`main/Contents-amd64.gz` etc.), so the old path 404s
+  (`http://deb.debian.org/debian//dists/trixie/Contents-amd64.gz` →
+  `404 Not Found`, exit 1 at `lb_chroot_linux-image`). Unneeded here anyway:
+  `iso-builder/config/package-lists/linuxtv.list.chroot` already lists the
+  needed firmware packages explicitly (`firmware-linux-nonfree`,
+  `firmware-iwlwifi`, etc.), so this auto-detection was pure redundant
+  overhead even before it started failing.
 - The Android workflow downloads a fresh Android SDK cmdline-tools build
   itself rather than relying on `android-actions/setup-android@v3` (fails
   trying to touch the removed legacy `tools` package) or whatever SDK
