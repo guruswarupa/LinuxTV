@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Alert,
   AppState,
@@ -23,7 +24,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
 import {
   DemoRepository,
@@ -119,6 +120,27 @@ const parseStoredSystems = (storedValue: string | null): SavedSystem[] => {
     return [];
   }
 };
+
+// Glass surface: a translucent tint clipped to the wrapped view's own border
+// radius. Real native blur (expo-blur's BlurView) doesn't respect rounded
+// clipping reliably on Android -- it shows up as a rectangular light patch
+// poking out from behind the rounded/circular content -- so this stays a
+// plain tint instead of a literal blur.
+function GlassSurface({
+  style,
+  tint = 'rgba(59, 66, 82, 0.55)',
+  children,
+}: {
+  style?: StyleProp<ViewStyle>;
+  tint?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <View style={[styles.glassClip, style, { backgroundColor: tint }]}>
+      {children}
+    </View>
+  );
+}
 
 export default function RemoteScreen() {
   const [systemName, setSystemName] = useState('');
@@ -637,6 +659,13 @@ export default function RemoteScreen() {
     );
   };
 
+  const moveApp = (appId: string, kind: string, direction: 'left' | 'right') => {
+    sendSettingsRequest('reorder_app', { id: appId, kind, direction });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // The desktop mutates its own config; ask it for the fresh order shortly after.
+    setTimeout(() => fetchApps(), 400);
+  };
+
   const adjustVolume = (direction: 'up' | 'down') => {
     if (direction === 'up') {
       setVolumeLevel(prev => Math.min(prev + 5, 100));
@@ -647,6 +676,9 @@ export default function RemoteScreen() {
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
+
+  const dragVolume = (pct: number) => setVolumeLevel(pct);
+  const commitVolume = (pct: number) => sendSettingsRequest('set_volume', { volume: pct });
 
   const toggleMute = () => {
     // Server handles MUTE as a toggle, so just send MUTE action
@@ -665,6 +697,9 @@ export default function RemoteScreen() {
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
+
+  const dragBrightness = (pct: number) => setBrightnessLevel(pct);
+  const commitBrightness = (pct: number) => sendSettingsRequest('set_brightness', { brightness: pct });
 
   const fetchVolumeLevel = async () => {
     if (repositoryState.isDemoMode) return;
@@ -1112,6 +1147,12 @@ export default function RemoteScreen() {
   }, [repositoryState.status, repositoryState.isDemoMode, activeTab]);
 
   const showLoginScreen = !hasSavedSetup;
+  const statusAccentColor =
+    repositoryState.status === 'Connected'
+      ? '#A3BE8C'
+      : repositoryState.status === 'Connecting...'
+        ? '#EBCB8B'
+        : '#BF616A';
   const tabItems: { key: TabType; label: string; icon: ComponentProps<typeof Ionicons>['name'] }[] = [
     { key: 'remote', label: 'Remote', icon: 'phone-portrait-outline' },
     { key: 'apps', label: 'Apps', icon: 'grid' },
@@ -1148,6 +1189,11 @@ export default function RemoteScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <LinearGradient
+        colors={['#2E3440', '#3B4252', '#2E3440']}
+        locations={[0, 0.55, 1]}
+        style={styles.ambientBackground}
+      />
       <View style={styles.container}>
         {repositoryState.isDemoMode ? (
           <View style={styles.demoBanner}>
@@ -1155,43 +1201,56 @@ export default function RemoteScreen() {
           </View>
         ) : null}
         {isRecording ? (
-          <View style={[styles.demoBanner, { backgroundColor: '#da3633' }]}>
-            <Ionicons name="mic-circle" size={16} color="#ffffff" />
-            <Text style={[styles.demoBannerText, { color: '#ffffff' }]}>RECORDING</Text>
+          <View style={[styles.demoBanner, { backgroundColor: '#BF616A' }]}>
+            <Ionicons name="mic-circle" size={16} color="#ECEFF4" />
+            <Text style={[styles.demoBannerText, { color: '#ECEFF4' }]}>RECORDING</Text>
           </View>
         ) : null}
         {isReplaying ? (
-          <View style={[styles.demoBanner, { backgroundColor: '#1f6feb' }]}>
-            <Ionicons name="play-circle" size={16} color="#ffffff" />
-            <Text style={[styles.demoBannerText, { color: '#ffffff' }]}>REPLAYING MACRO</Text>
+          <View style={[styles.demoBanner, { backgroundColor: '#88C0D0' }]}>
+            <Ionicons name="play-circle" size={16} color="#ECEFF4" />
+            <Text style={[styles.demoBannerText, { color: '#ECEFF4' }]}>REPLAYING MACRO</Text>
           </View>
         ) : null}
 
-        <View style={styles.header}>
+        <GlassSurface style={styles.header} tint="rgba(59, 66, 82, 0.72)">
           <View style={styles.headerLeft}>
+            <View
+              style={[
+                styles.statusPill,
+                repositoryState.status === 'Connected'
+                  ? styles.statusPillOnline
+                  : styles.statusPillOffline,
+              ]}>
+              <View
+                style={[
+                  styles.statusDot,
+                  repositoryState.status === 'Connected'
+                    ? styles.statusOnline
+                    : styles.statusOffline,
+                ]}
+              />
+            </View>
             <View style={styles.headerTextWrap}>
-              <Text style={styles.title}>LinuxTV</Text>
+              <Text style={styles.title} numberOfLines={1}>LinuxTV</Text>
               <View style={styles.headerMetaRow}>
-                <Text style={styles.deviceName}>
+                <Text style={styles.deviceName} numberOfLines={1}>
                   {repositoryState.isDemoMode
                     ? 'Mock remote session'
                     : activeSystem?.name || repositoryState.deviceName || 'No system selected'}
                 </Text>
                 {!showLoginScreen ? (
-                  <Text style={styles.headerStatusText} numberOfLines={1}>
-                    {repositoryState.lastMessage}
-                  </Text>
+                  <>
+                    <View style={styles.metaDot} />
+                    <Text
+                      style={[styles.headerStatusText, { color: statusAccentColor }]}
+                      numberOfLines={1}>
+                      {repositoryState.status === 'Connected' ? 'Connected' : repositoryState.lastMessage}
+                    </Text>
+                  </>
                 ) : null}
               </View>
             </View>
-            <View
-              style={[
-                styles.statusDot,
-                repositoryState.status === 'Connected'
-                  ? styles.statusOnline
-                  : styles.statusOffline,
-              ]}
-            />
           </View>
           {hasSavedSetup ? (
             <Pressable
@@ -1200,16 +1259,17 @@ export default function RemoteScreen() {
                 pressed && styles.pressed,
                 isMenuVisible && styles.menuButtonActive,
               ]}
-              onPress={() => setIsMenuVisible((current) => !current)}>
-              <Text style={styles.menuButtonText}>⚙</Text>
+              onPress={() => setIsMenuVisible((current) => !current)}
+              hitSlop={6}>
+              <Ionicons name="settings-sharp" size={20} color={isMenuVisible ? '#81A1C1' : '#D8DEE9'} />
             </Pressable>
           ) : null}
-        </View>
+        </GlassSurface>
 
         {showLoginScreen ? (
           <View style={styles.loginContainer}>
             <View style={styles.loginHeader}>
-              <Ionicons name="tv" size={64} color="#58a6ff" />
+              <Ionicons name="tv" size={64} color="#88C0D0" />
               <Text style={styles.helperText}>Add your first LinuxTV system</Text>
               <Text style={styles.helperSubtext}>
                 Save multiple systems here, then switch between them from the settings gear.
@@ -1219,7 +1279,7 @@ export default function RemoteScreen() {
               value={systemName}
               onChangeText={setSystemName}
               placeholder="System name"
-              placeholderTextColor="#8b949e"
+              placeholderTextColor="#D8DEE9"
               autoCapitalize="words"
               autoCorrect={false}
               style={styles.input}
@@ -1229,7 +1289,7 @@ export default function RemoteScreen() {
                 value={ipAddress}
                 onChangeText={setIpAddress}
                 placeholder="IP address"
-                placeholderTextColor="#8b949e"
+                placeholderTextColor="#D8DEE9"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="numbers-and-punctuation"
@@ -1239,7 +1299,7 @@ export default function RemoteScreen() {
                 value={port}
                 onChangeText={setPort}
                 placeholder="Port"
-                placeholderTextColor="#8b949e"
+                placeholderTextColor="#D8DEE9"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="number-pad"
@@ -1250,7 +1310,7 @@ export default function RemoteScreen() {
               value={username}
               onChangeText={setUsername}
               placeholder="Username"
-              placeholderTextColor="#8b949e"
+              placeholderTextColor="#D8DEE9"
               autoCapitalize="none"
               autoCorrect={false}
               style={styles.input}
@@ -1259,7 +1319,7 @@ export default function RemoteScreen() {
               value={password}
               onChangeText={setPassword}
               placeholder="Password"
-              placeholderTextColor="#8b949e"
+              placeholderTextColor="#D8DEE9"
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
@@ -1291,22 +1351,26 @@ export default function RemoteScreen() {
                     {/* Volume Control - Left */}
                     <View style={styles.controlCard}>
                       <View style={styles.controlHeader}>
-                        <Ionicons name="volume-high" size={20} color="#238636" />
+                        <Ionicons name="volume-high" size={20} color="#A3BE8C" />
                         <Text style={styles.controlLabel}>Volume</Text>
                       </View>
                       <View style={styles.controlSliderVertical}>
                         <Pressable
                           style={({ pressed }) => [styles.controlBtn, pressed && styles.pressed]}
                           onPress={() => adjustVolume('up')}>
-                          <Ionicons name="add" size={24} color="#f0f6fc" />
+                          <Ionicons name="add" size={24} color="#ECEFF4" />
                         </Pressable>
-                        <View style={styles.controlTrack}>
-                          <View style={[styles.controlTrackFill, { height: `${volumeLevel}%` }]} />
-                        </View>
+                        <VerticalSlider
+                          value={volumeLevel}
+                          onChange={dragVolume}
+                          onCommit={commitVolume}
+                          color="#A3BE8C"
+                          icon="volume-high"
+                        />
                         <Pressable
                           style={({ pressed }) => [styles.controlBtn, pressed && styles.pressed]}
                           onPress={() => adjustVolume('down')}>
-                          <Ionicons name="remove" size={24} color="#f0f6fc" />
+                          <Ionicons name="remove" size={24} color="#ECEFF4" />
                         </Pressable>
                       </View>
                       <Text style={styles.controlValue}>{volumeLevel}%</Text>
@@ -1316,7 +1380,7 @@ export default function RemoteScreen() {
                     <View style={styles.centerControlColumn}>
                       {/* D-Pad */}
                       <View style={styles.dpadContainer}>
-                        <View style={styles.dpadCircle}>
+                        <GlassSurface style={styles.dpadCircle} tint="rgba(59, 66, 82, 0.72)">
                           {/* Top Button */}
                           <Pressable
                             style={({ pressed }) => [styles.dpadButton, styles.dpadTop, pressed && styles.pressed]}
@@ -1328,7 +1392,7 @@ export default function RemoteScreen() {
                               createRepeatingActionHandlers('UP').onPressOut();
                             }}
                             onPress={() => sendAction('UP')}>
-                            <Ionicons name="caret-up" size={36} color="#f0f6fc" />
+                            <Ionicons name="caret-up" size={36} color="#ECEFF4" />
                           </Pressable>
                           
                           {/* Left Button */}
@@ -1342,7 +1406,7 @@ export default function RemoteScreen() {
                               createRepeatingActionHandlers('LEFT').onPressOut();
                             }}
                             onPress={() => sendAction('LEFT')}>
-                            <Ionicons name="caret-back" size={36} color="#f0f6fc" />
+                            <Ionicons name="caret-back" size={36} color="#ECEFF4" />
                           </Pressable>
                           
                           {/* Center OK Button */}
@@ -1366,7 +1430,7 @@ export default function RemoteScreen() {
                               createRepeatingActionHandlers('RIGHT').onPressOut();
                             }}
                             onPress={() => sendAction('RIGHT')}>
-                            <Ionicons name="caret-forward" size={36} color="#f0f6fc" />
+                            <Ionicons name="caret-forward" size={36} color="#ECEFF4" />
                           </Pressable>
                           
                           {/* Bottom Button */}
@@ -1380,31 +1444,35 @@ export default function RemoteScreen() {
                               createRepeatingActionHandlers('DOWN').onPressOut();
                             }}
                             onPress={() => sendAction('DOWN')}>
-                            <Ionicons name="caret-down" size={36} color="#f0f6fc" />
+                            <Ionicons name="caret-down" size={36} color="#ECEFF4" />
                           </Pressable>
-                        </View>
+                        </GlassSurface>
                       </View>
                     </View>
 
                     {/* Brightness Control - Right */}
                     <View style={styles.controlCard}>
                       <View style={styles.controlHeader}>
-                        <Ionicons name="sunny" size={20} color="#d29922" />
+                        <Ionicons name="sunny" size={20} color="#EBCB8B" />
                         <Text style={styles.controlLabel}>Brightness</Text>
                       </View>
                       <View style={styles.controlSliderVertical}>
                         <Pressable
                           style={({ pressed }) => [styles.controlBtn, pressed && styles.pressed]}
                           onPress={() => adjustBrightness('up')}>
-                          <Ionicons name="add" size={24} color="#f0f6fc" />
+                          <Ionicons name="add" size={24} color="#ECEFF4" />
                         </Pressable>
-                        <View style={styles.controlTrack}>
-                          <View style={[styles.controlTrackFill, { height: `${brightnessLevel}%`, backgroundColor: '#d29922' }]} />
-                        </View>
+                        <VerticalSlider
+                          value={brightnessLevel}
+                          onChange={dragBrightness}
+                          onCommit={commitBrightness}
+                          color="#EBCB8B"
+                          icon="sunny"
+                        />
                         <Pressable
                           style={({ pressed }) => [styles.controlBtn, pressed && styles.pressed]}
                           onPress={() => adjustBrightness('down')}>
-                          <Ionicons name="remove" size={24} color="#f0f6fc" />
+                          <Ionicons name="remove" size={24} color="#ECEFF4" />
                         </Pressable>
                       </View>
                       <Text style={styles.controlValue}>{brightnessLevel}%</Text>
@@ -1563,12 +1631,12 @@ export default function RemoteScreen() {
                       <Pressable
                         style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed]}
                         onPress={fetchApps}>
-                        <Ionicons name="refresh" size={20} color="#58a6ff" />
+                        <Ionicons name="refresh" size={20} color="#88C0D0" />
                       </Pressable>
                       <Pressable
                         style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed]}
                         onPress={showAddApp}>
-                        <Ionicons name="add" size={20} color="#58a6ff" />
+                        <Ionicons name="add" size={20} color="#88C0D0" />
                       </Pressable>
                     </View>
                   </View>
@@ -1580,7 +1648,7 @@ export default function RemoteScreen() {
                         <TextInput
                           style={styles.appInput}
                           placeholder="App Name"
-                          placeholderTextColor="#8b949e"
+                          placeholderTextColor="#D8DEE9"
                           value={newAppName}
                           onChangeText={setNewAppName}
                         />
@@ -1589,7 +1657,7 @@ export default function RemoteScreen() {
                           <Pressable
                             style={[styles.appTypeButton, newAppType === 'native' && styles.appTypeButtonActive]}
                             onPress={() => setNewAppType('native')}>
-                            <Ionicons name="desktop" size={16} color={newAppType === 'native' ? '#58a6ff' : '#8b949e'} />
+                            <Ionicons name="desktop" size={16} color={newAppType === 'native' ? '#88C0D0' : '#D8DEE9'} />
                             <Text style={[styles.appTypeText, newAppType === 'native' && styles.appTypeTextActive]}>
                               Native
                             </Text>
@@ -1597,7 +1665,7 @@ export default function RemoteScreen() {
                           <Pressable
                             style={[styles.appTypeButton, newAppType === 'web' && styles.appTypeButtonActive]}
                             onPress={() => setNewAppType('web')}>
-                            <Ionicons name="globe" size={16} color={newAppType === 'web' ? '#58a6ff' : '#8b949e'} />
+                            <Ionicons name="globe" size={16} color={newAppType === 'web' ? '#88C0D0' : '#D8DEE9'} />
                             <Text style={[styles.appTypeText, newAppType === 'web' && styles.appTypeTextActive]}>
                               Web
                             </Text>
@@ -1608,7 +1676,7 @@ export default function RemoteScreen() {
                           <TextInput
                             style={styles.appInput}
                             placeholder="Command (e.g., vlc, firefox)"
-                            placeholderTextColor="#8b949e"
+                            placeholderTextColor="#D8DEE9"
                             value={newAppCommand}
                             onChangeText={setNewAppCommand}
                           />
@@ -1616,7 +1684,7 @@ export default function RemoteScreen() {
                           <TextInput
                             style={styles.appInput}
                             placeholder="URL (e.g., https://youtube.com)"
-                            placeholderTextColor="#8b949e"
+                            placeholderTextColor="#D8DEE9"
                             value={newAppUrl}
                             onChangeText={setNewAppUrl}
                             keyboardType="url"
@@ -1644,88 +1712,44 @@ export default function RemoteScreen() {
                     {serverApps.filter(app => app.kind === 'native').length > 0 && (
                       <>
                         <View style={styles.sectionHeader}>
-                          <Ionicons name="desktop" size={18} color="#58a6ff" />
-                          <Text style={styles.sectionTitle}>Native Apps</Text>
+                          <Ionicons name="desktop" size={18} color="#88C0D0" />
+                          <Text style={styles.sectionTitle}>Apps</Text>
                         </View>
                         {serverApps
                           .filter(app => app.kind === 'native')
-                          .map((app) => (
-                            <Pressable
+                          .map((app, index, list) => (
+                            <AppTile
                               key={app.id}
-                              style={({ pressed }) => [styles.appCard, pressed && styles.pressed]}>
-                              <Pressable
-                                style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
-                                onPress={() => removeApp(app.id, app.name)}>
-                                <Ionicons name="trash" size={16} color="#f85149" />
-                              </Pressable>
-                              <Pressable
-                                style={styles.appCardContent}
-                                onPress={() => launchApp(app.id)}>
-                                <View style={styles.appIconContainer}>
-                                  {app.icon ? (
-                                    <RNImage 
-                                      source={{ uri: app.icon }} 
-                                      style={styles.appIconImage}
-                                      resizeMode="contain"
-                                    />
-                                  ) : (
-                                    <View style={styles.appIconCircle}>
-                                      <Ionicons 
-                                        name="desktop" 
-                                        size={28} 
-                                        color="#58a6ff" 
-                                      />
-                                    </View>
-                                  )}
-                                </View>
-                                <Text style={styles.appName}>{app.name}</Text>
-                              </Pressable>
-                            </Pressable>
+                              app={app}
+                              fallbackIcon="desktop"
+                              onLaunch={() => launchApp(app.id)}
+                              onRemove={() => removeApp(app.id, app.name)}
+                              onMoveLeft={index > 0 ? () => moveApp(app.id, 'native', 'left') : undefined}
+                              onMoveRight={index < list.length - 1 ? () => moveApp(app.id, 'native', 'right') : undefined}
+                            />
                           ))}
                       </>
                     )}
-                    
+
                     {/* Web Apps Section */}
                     {serverApps.filter(app => app.kind === 'web').length > 0 && (
                       <>
                         <View style={styles.sectionHeader}>
-                          <Ionicons name="globe" size={18} color="#58a6ff" />
-                          <Text style={styles.sectionTitle}>Web Apps</Text>
+                          <Ionicons name="globe" size={18} color="#88C0D0" />
+                          <Text style={styles.sectionTitle}>Streaming</Text>
                         </View>
                         {serverApps
                           .filter(app => app.kind === 'web')
-                          .map((app) => (
-                            <Pressable
+                          .map((app, index, list) => (
+                            <AppTile
                               key={app.id}
-                              style={({ pressed }) => [styles.appCard, pressed && styles.pressed]}>
-                              <Pressable
-                                style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
-                                onPress={() => removeApp(app.id, app.name)}>
-                                <Ionicons name="trash" size={16} color="#f85149" />
-                              </Pressable>
-                              <Pressable
-                                style={styles.appCardContent}
-                                onPress={() => launchApp(app.id)}>
-                                <View style={styles.appIconContainer}>
-                                  {app.icon ? (
-                                    <RNImage 
-                                      source={{ uri: app.icon }} 
-                                      style={styles.appIconImage}
-                                      resizeMode="contain"
-                                    />
-                                  ) : (
-                                    <View style={styles.appIconCircle}>
-                                      <Ionicons 
-                                        name="globe" 
-                                        size={28} 
-                                        color="#58a6ff" 
-                                      />
-                                    </View>
-                                  )}
-                                </View>
-                                <Text style={styles.appName}>{app.name}</Text>
-                              </Pressable>
-                            </Pressable>
+                              app={app}
+                              fallbackIcon="globe"
+                              onLaunch={() => launchApp(app.id)}
+                              onRemove={() => removeApp(app.id, app.name)}
+                              onMoveLeft={index > 0 ? () => moveApp(app.id, 'web', 'left') : undefined}
+                              onMoveRight={index < list.length - 1 ? () => moveApp(app.id, 'web', 'right') : undefined}
+                            />
                           ))}
                       </>
                     )}
@@ -1733,7 +1757,7 @@ export default function RemoteScreen() {
                   
                   {serverApps.length === 0 && (
                     <View style={styles.emptyApps}>
-                      <Ionicons name="apps" size={64} color="#8b949e" />
+                      <Ionicons name="apps" size={64} color="#D8DEE9" />
                       <Text style={styles.emptyAppsText}>No apps found</Text>
                       <Text style={styles.emptyAppsSubtext}>Tap refresh to load apps from server</Text>
                     </View>
@@ -1749,7 +1773,7 @@ export default function RemoteScreen() {
                     value={keyboardDraft}
                     onChangeText={setKeyboardDraft}
                     placeholder="Type text..."
-                    placeholderTextColor="#8b949e"
+                    placeholderTextColor="#D8DEE9"
                     autoCapitalize="none"
                     autoCorrect={false}
                     multiline
@@ -1761,7 +1785,7 @@ export default function RemoteScreen() {
                       sendKeyboardText();
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     }}>
-                    <Ionicons name="paper-plane" size={20} color="#ffffff" />
+                    <Ionicons name="paper-plane" size={20} color="#ECEFF4" />
                     <Text style={styles.primaryButtonText}>Send</Text>
                   </Pressable>
                 </View>
@@ -1848,13 +1872,13 @@ export default function RemoteScreen() {
                         style={({ pressed }) => [
                           styles.refreshButton,
                           pressed && styles.pressed,
-                          isRecording && { backgroundColor: '#da3633', borderColor: '#da3633' },
+                          isRecording && { backgroundColor: '#BF616A', borderColor: '#BF616A' },
                         ]}
                         onPress={toggleRecording}>
                         <Ionicons
                           name={isRecording ? 'stop-circle' : 'mic-circle'}
                           size={20}
-                          color="#ffffff"
+                          color="#ECEFF4"
                         />
                       </Pressable>
                     </View>
@@ -1867,7 +1891,7 @@ export default function RemoteScreen() {
 
                   {savedMacros.length === 0 && !isRecording && (
                     <View style={styles.emptyApps}>
-                      <Ionicons name="list" size={64} color="#8b949e" />
+                      <Ionicons name="list" size={64} color="#D8DEE9" />
                       <Text style={styles.emptyAppsText}>No macros saved</Text>
                       <Text style={styles.emptyAppsSubtext}>
                         Press the record button to create one.
@@ -1878,14 +1902,14 @@ export default function RemoteScreen() {
                   {savedMacros.map(macro => (
                     <View key={macro.id} style={styles.systemRow}>
                       <Pressable style={styles.systemRowLeft} onPress={() => replayMacro(macro)}>
-                        <Ionicons name="play-circle" size={24} color="#58a6ff" />
+                        <Ionicons name="play-circle" size={24} color="#88C0D0" />
                         <View style={styles.systemRowText}>
                           <Text style={styles.systemName}>{macro.name}</Text>
                           <Text style={styles.systemMeta}>{macro.actions.length} actions</Text>
                         </View>
                       </Pressable>
                       <Pressable style={styles.bluetoothRemoveButton} onPress={() => openRenameMacroEditor(macro)}>
-                        <Ionicons name="create-outline" size={18} color="#c9d1d9" />
+                        <Ionicons name="create-outline" size={18} color="#D8DEE9" />
                       </Pressable>
                       <Pressable
                         style={styles.bluetoothRemoveButton}
@@ -1895,7 +1919,7 @@ export default function RemoteScreen() {
                             { text: 'Delete', style: 'destructive', onPress: () => deleteMacro(macro.id) },
                           ]);
                         }}>
-                        <Ionicons name="trash-outline" size={18} color="#f85149" />
+                        <Ionicons name="trash-outline" size={18} color="#BF616A" />
                       </Pressable>
                     </View>
                   ))}
@@ -1908,7 +1932,7 @@ export default function RemoteScreen() {
                 <View style={styles.touchpadWrapper}>
                   <View style={styles.touchpadSurface} {...touchpadResponder.panHandlers}>
                     <View style={styles.touchpadInner}>
-                      <Ionicons name="hand-left" size={48} color="#58a6ff" />
+                      <Ionicons name="hand-left" size={48} color="#88C0D0" />
                       <Text style={styles.touchpadText}>Touchpad</Text>
                       <Text style={styles.touchpadHint}>Tap to click • Drag to move</Text>
                     </View>
@@ -1921,7 +1945,7 @@ export default function RemoteScreen() {
                         repositoryRef.current?.sendPointerEvent('scroll', { dx: 0, dy: -1 });
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}>
-                      <Ionicons name="chevron-up" size={24} color="#8b949e" />
+                      <Ionicons name="chevron-up" size={24} color="#D8DEE9" />
                     </Pressable>
                     <View
                       style={styles.scrollTrack}
@@ -1958,7 +1982,7 @@ export default function RemoteScreen() {
                         repositoryRef.current?.sendPointerEvent('scroll', { dx: 0, dy: 1 });
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}>
-                      <Ionicons name="chevron-down" size={24} color="#8b949e" />
+                      <Ionicons name="chevron-down" size={24} color="#D8DEE9" />
                     </Pressable>
                   </View>
                 </View>
@@ -1990,7 +2014,7 @@ export default function RemoteScreen() {
 
       {!showLoginScreen && (
         <View style={styles.tabBarContainer}>
-          <View style={styles.tabBar}>
+          <GlassSurface style={styles.tabBar} tint="rgba(59, 66, 82, 0.72)">
             {tabItems.map((tab) => (
               <Pressable
                 key={tab.key}
@@ -2006,7 +2030,7 @@ export default function RemoteScreen() {
                 <Ionicons
                   name={tab.icon}
                   size={22}
-                  color={activeTab === tab.key ? '#238636' : '#8b949e'}
+                  color={activeTab === tab.key ? '#81A1C1' : '#D8DEE9'}
                 />
                 <Text
                   style={[
@@ -2017,7 +2041,7 @@ export default function RemoteScreen() {
                 </Text>
               </Pressable>
             ))}
-          </View>
+          </GlassSurface>
         </View>
       )}
 
@@ -2027,10 +2051,11 @@ export default function RemoteScreen() {
         visible={isMenuVisible}
         onRequestClose={() => setIsMenuVisible(false)}>
         <Pressable style={styles.menuOverlay} onPress={() => setIsMenuVisible(false)}>
-          <Pressable style={styles.menuSheet} onPress={() => undefined}>
+          <Pressable onPress={() => undefined} style={styles.menuSheetWrap}>
+          <GlassSurface style={styles.menuSheet} tint="rgba(59, 66, 82, 0.88)">
             {/* Header */}
             <View style={styles.menuHeader}>
-              <Ionicons name="settings" size={24} color="#58a6ff" />
+              <Ionicons name="settings" size={24} color="#88C0D0" />
               <Text style={styles.menuHeaderTitle}>Settings</Text>
             </View>
             
@@ -2056,7 +2081,7 @@ export default function RemoteScreen() {
                         <Ionicons 
                           name={system.id === activeSystemId ? "radio-button-on" : "radio-button-off"} 
                           size={18} 
-                          color={system.id === activeSystemId ? "#3fb950" : "#8b949e"} 
+                          color={system.id === activeSystemId ? "#A3BE8C" : "#D8DEE9"} 
                         />
                         <View style={styles.systemRowText}>
                           <Text style={styles.systemName}>{system.name}</Text>
@@ -2081,7 +2106,7 @@ export default function RemoteScreen() {
                   style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
                   onPress={openAddSystemEditor}>
                   <View style={styles.menuItemContent}>
-                    <Ionicons name="add-circle" size={20} color="#58a6ff" />
+                    <Ionicons name="add-circle" size={20} color="#88C0D0" />
                     <Text style={styles.menuItemText}>Add System</Text>
                   </View>
                 </Pressable>
@@ -2091,7 +2116,7 @@ export default function RemoteScreen() {
                     style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
                     onPress={openEditSystemEditor}>
                     <View style={styles.menuItemContent}>
-                      <Ionicons name="create" size={20} color="#58a6ff" />
+                      <Ionicons name="create" size={20} color="#88C0D0" />
                       <Text style={styles.menuItemText}>Edit System</Text>
                     </View>
                   </Pressable>
@@ -2102,7 +2127,7 @@ export default function RemoteScreen() {
                     style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
                     onPress={confirmRemoveActiveSystem}>
                     <View style={styles.menuItemContent}>
-                      <Ionicons name="trash" size={20} color="#f85149" />
+                      <Ionicons name="trash" size={20} color="#BF616A" />
                       <Text style={styles.menuItemDangerText}>Remove System</Text>
                     </View>
                   </Pressable>
@@ -2121,7 +2146,7 @@ export default function RemoteScreen() {
                 fetchWifiNetworks();
               }}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="wifi" size={20} color="#58a6ff" />
+                <Ionicons name="wifi" size={20} color="#88C0D0" />
                 <Text style={styles.menuItemText}>Wi-Fi</Text>
               </View>
             </Pressable>
@@ -2134,7 +2159,7 @@ export default function RemoteScreen() {
                 fetchBluetoothDevices();
               }}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="bluetooth" size={20} color="#58a6ff" />
+                <Ionicons name="bluetooth" size={20} color="#88C0D0" />
                 <Text style={styles.menuItemText}>Bluetooth</Text>
               </View>
             </Pressable>
@@ -2147,7 +2172,7 @@ export default function RemoteScreen() {
                 fetchSoundDevices();
               }}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="volume-high" size={20} color="#58a6ff" />
+                <Ionicons name="volume-high" size={20} color="#88C0D0" />
                 <Text style={styles.menuItemText}>Sound</Text>
               </View>
             </Pressable>
@@ -2159,7 +2184,7 @@ export default function RemoteScreen() {
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
               onPress={() => confirmPowerAction('UPDATE')}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="download" size={20} color="#58a6ff" />
+                <Ionicons name="download" size={20} color="#88C0D0" />
                 <Text style={styles.menuItemText}>Update System</Text>
               </View>
             </Pressable>
@@ -2169,7 +2194,7 @@ export default function RemoteScreen() {
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
               onPress={() => confirmPowerAction('SHUTDOWN')}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="power" size={20} color="#f85149" />
+                <Ionicons name="power" size={20} color="#BF616A" />
                 <Text style={styles.menuItemDangerText}>Shutdown</Text>
               </View>
             </Pressable>
@@ -2178,7 +2203,7 @@ export default function RemoteScreen() {
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
               onPress={() => confirmPowerAction('REBOOT')}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="refresh" size={20} color="#f85149" />
+                <Ionicons name="refresh" size={20} color="#BF616A" />
                 <Text style={styles.menuItemDangerText}>Reboot</Text>
               </View>
             </Pressable>
@@ -2187,7 +2212,7 @@ export default function RemoteScreen() {
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
               onPress={() => confirmPowerAction('SLEEP')}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="moon" size={20} color="#ffa657" />
+                <Ionicons name="moon" size={20} color="#EBCB8B" />
                 <Text style={styles.menuItemWarningText}>Sleep</Text>
               </View>
             </Pressable>
@@ -2198,12 +2223,13 @@ export default function RemoteScreen() {
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
               onPress={confirmLogout}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="log-out" size={20} color="#f85149" />
+                <Ionicons name="log-out" size={20} color="#BF616A" />
                 <Text style={styles.menuItemDangerText}>
                   {repositoryState.isDemoMode ? 'Exit Demo' : 'Logout & Clear Systems'}
                 </Text>
               </View>
             </Pressable>
+          </GlassSurface>
           </Pressable>
         </Pressable>
       </Modal>
@@ -2219,7 +2245,8 @@ export default function RemoteScreen() {
             setIsSystemEditorVisible(false);
             resetEditorToActiveSystem();
           }}>
-          <Pressable style={styles.editorSheet} onPress={() => undefined}>
+          <Pressable onPress={() => undefined}>
+          <GlassSurface style={styles.editorSheet} tint="rgba(59, 66, 82, 0.88)">
             <Text style={styles.editorTitle}>
               {editingSystemId ? 'Edit system' : 'Add system'}
             </Text>
@@ -2230,7 +2257,7 @@ export default function RemoteScreen() {
               value={systemName}
               onChangeText={setSystemName}
               placeholder="System name"
-              placeholderTextColor="#8b949e"
+              placeholderTextColor="#D8DEE9"
               autoCapitalize="words"
               autoCorrect={false}
               style={styles.input}
@@ -2240,7 +2267,7 @@ export default function RemoteScreen() {
                 value={ipAddress}
                 onChangeText={setIpAddress}
                 placeholder="IP address"
-                placeholderTextColor="#8b949e"
+                placeholderTextColor="#D8DEE9"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="numbers-and-punctuation"
@@ -2250,7 +2277,7 @@ export default function RemoteScreen() {
                 value={port}
                 onChangeText={setPort}
                 placeholder="Port"
-                placeholderTextColor="#8b949e"
+                placeholderTextColor="#D8DEE9"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="number-pad"
@@ -2261,7 +2288,7 @@ export default function RemoteScreen() {
               value={username}
               onChangeText={setUsername}
               placeholder="Username"
-              placeholderTextColor="#8b949e"
+              placeholderTextColor="#D8DEE9"
               autoCapitalize="none"
               autoCorrect={false}
               style={styles.input}
@@ -2270,7 +2297,7 @@ export default function RemoteScreen() {
               value={password}
               onChangeText={setPassword}
               placeholder="Password"
-              placeholderTextColor="#8b949e"
+              placeholderTextColor="#D8DEE9"
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
@@ -2291,6 +2318,7 @@ export default function RemoteScreen() {
               }}>
               <Text style={styles.ghostButtonText}>Cancel</Text>
             </Pressable>
+          </GlassSurface>
           </Pressable>
         </Pressable>
       </Modal>
@@ -2302,12 +2330,13 @@ export default function RemoteScreen() {
         visible={isWifiVisible}
         onRequestClose={() => setIsWifiVisible(false)}>
         <Pressable style={styles.settingsOverlay} onPress={() => setIsWifiVisible(false)}>
-          <Pressable style={styles.settingsSheet} onPress={() => undefined}>
+          <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
+          <GlassSurface style={styles.settingsSheet} tint="rgba(59, 66, 82, 0.88)">
             <View style={styles.settingsHeader}>
-              <Ionicons name="wifi" size={24} color="#58a6ff" />
+              <Ionicons name="wifi" size={24} color="#88C0D0" />
               <Text style={styles.settingsTitle}>Wi-Fi Settings</Text>
               <Pressable onPress={() => setIsWifiVisible(false)} style={styles.settingsCloseButton}>
-                <Ionicons name="close" size={24} color="#8b949e" />
+                <Ionicons name="close" size={24} color="#D8DEE9" />
               </Pressable>
             </View>
             
@@ -2316,7 +2345,7 @@ export default function RemoteScreen() {
               
               {wifiLoading ? (
                 <View style={styles.settingsLoading}>
-                  <Ionicons name="sync" size={32} color="#58a6ff" />
+                  <Ionicons name="sync" size={32} color="#88C0D0" />
                   <Text style={styles.settingsLoadingText}>Scanning networks...</Text>
                 </View>
               ) : (
@@ -2340,12 +2369,12 @@ export default function RemoteScreen() {
                         <Ionicons 
                           name={currentWifi === network.ssid ? "checkmark-circle" : "wifi"} 
                           size={20} 
-                          color={currentWifi === network.ssid ? "#3fb950" : "#8b949e"} 
+                          color={currentWifi === network.ssid ? "#A3BE8C" : "#D8DEE9"} 
                         />
                         <View style={styles.networkItemText}>
                           <Text style={styles.networkName}>{network.label || network.ssid}</Text>
                           {network.security && network.security.toLowerCase() !== 'open' && (
-                            <Ionicons name="lock-closed" size={12} color="#8b949e" />
+                            <Ionicons name="lock-closed" size={12} color="#D8DEE9" />
                           )}
                         </View>
                       </View>
@@ -2357,7 +2386,7 @@ export default function RemoteScreen() {
                   
                   {wifiNetworks.length === 0 && (
                     <View style={styles.settingsEmpty}>
-                      <Ionicons name="wifi-outline" size={48} color="#8b949e" />
+                      <Ionicons name="wifi-outline" size={48} color="#D8DEE9" />
                       <Text style={styles.settingsEmptyText}>No networks found</Text>
                     </View>
                   )}
@@ -2371,14 +2400,14 @@ export default function RemoteScreen() {
                     value={wifiPassword}
                     onChangeText={setWifiPassword}
                     placeholder="Enter Wi-Fi password"
-                    placeholderTextColor="#8b949e"
+                    placeholderTextColor="#D8DEE9"
                     secureTextEntry
                     style={styles.settingsInput}
                   />
                   <Pressable
                     style={styles.settingsActionButton}
                     onPress={connectToSelectedWifi}>
-                    <Ionicons name="checkmark" size={20} color="#3fb950" />
+                    <Ionicons name="checkmark" size={20} color="#A3BE8C" />
                     <Text style={styles.settingsActionButtonText}>Connect</Text>
                   </Pressable>
                 </View>
@@ -2397,10 +2426,11 @@ export default function RemoteScreen() {
               <Pressable
                 style={styles.settingsActionButton}
                 onPress={fetchWifiNetworks}>
-                <Ionicons name="refresh" size={20} color="#58a6ff" />
+                <Ionicons name="refresh" size={20} color="#88C0D0" />
                 <Text style={styles.settingsActionButtonText}>Refresh Networks</Text>
               </Pressable>
             </ScrollView>
+          </GlassSurface>
           </Pressable>
         </Pressable>
       </Modal>
@@ -2412,12 +2442,13 @@ export default function RemoteScreen() {
         visible={isBluetoothVisible}
         onRequestClose={() => setIsBluetoothVisible(false)}>
         <Pressable style={styles.settingsOverlay} onPress={() => setIsBluetoothVisible(false)}>
-          <Pressable style={styles.settingsSheet} onPress={() => undefined}>
+          <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
+          <GlassSurface style={styles.settingsSheet} tint="rgba(59, 66, 82, 0.88)">
             <View style={styles.settingsHeader}>
-              <Ionicons name="bluetooth" size={24} color="#58a6ff" />
+              <Ionicons name="bluetooth" size={24} color="#88C0D0" />
               <Text style={styles.settingsTitle}>Bluetooth Settings</Text>
               <Pressable onPress={() => setIsBluetoothVisible(false)} style={styles.settingsCloseButton}>
-                <Ionicons name="close" size={24} color="#8b949e" />
+                <Ionicons name="close" size={24} color="#D8DEE9" />
               </Pressable>
             </View>
             
@@ -2426,7 +2457,7 @@ export default function RemoteScreen() {
               
               {bluetoothLoading ? (
                 <View style={styles.settingsLoading}>
-                  <Ionicons name="sync" size={32} color="#58a6ff" />
+                  <Ionicons name="sync" size={32} color="#88C0D0" />
                   <Text style={styles.settingsLoadingText}>Scanning devices...</Text>
                 </View>
               ) : (
@@ -2437,7 +2468,7 @@ export default function RemoteScreen() {
                         <Ionicons 
                           name={device.connected ? "bluetooth" : "bluetooth-outline"} 
                           size={20} 
-                          color={device.connected ? "#3fb950" : "#8b949e"} 
+                          color={device.connected ? "#A3BE8C" : "#D8DEE9"} 
                         />
                         <View style={styles.bluetoothItemText}>
                           <Text style={styles.bluetoothName}>{device.name || device.label}</Text>
@@ -2467,7 +2498,7 @@ export default function RemoteScreen() {
                               ]
                             );
                           }}>
-                          <Ionicons name="trash-outline" size={18} color="#f85149" />
+                          <Ionicons name="trash-outline" size={18} color="#BF616A" />
                         </Pressable>
                       </View>
                     </View>
@@ -2475,7 +2506,7 @@ export default function RemoteScreen() {
                   
                   {bluetoothDevices.length === 0 && (
                     <View style={styles.settingsEmpty}>
-                      <Ionicons name="bluetooth-outline" size={48} color="#8b949e" />
+                      <Ionicons name="bluetooth-outline" size={48} color="#D8DEE9" />
                       <Text style={styles.settingsEmptyText}>No devices found</Text>
                     </View>
                   )}
@@ -2495,10 +2526,11 @@ export default function RemoteScreen() {
               <Pressable
                 style={styles.settingsActionButton}
                 onPress={fetchBluetoothDevices}>
-                <Ionicons name="refresh" size={20} color="#58a6ff" />
+                <Ionicons name="refresh" size={20} color="#88C0D0" />
                 <Text style={styles.settingsActionButtonText}>Refresh Devices</Text>
               </Pressable>
             </ScrollView>
+          </GlassSurface>
           </Pressable>
         </Pressable>
       </Modal>
@@ -2510,12 +2542,13 @@ export default function RemoteScreen() {
         visible={isSoundVisible}
         onRequestClose={() => setIsSoundVisible(false)}>
         <Pressable style={styles.settingsOverlay} onPress={() => setIsSoundVisible(false)}>
-          <Pressable style={styles.settingsSheet} onPress={() => undefined}>
+          <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
+          <GlassSurface style={styles.settingsSheet} tint="rgba(59, 66, 82, 0.88)">
             <View style={styles.settingsHeader}>
-              <Ionicons name="volume-high" size={24} color="#58a6ff" />
+              <Ionicons name="volume-high" size={24} color="#88C0D0" />
               <Text style={styles.settingsTitle}>Sound Settings</Text>
               <Pressable onPress={() => setIsSoundVisible(false)} style={styles.settingsCloseButton}>
-                <Ionicons name="close" size={24} color="#8b949e" />
+                <Ionicons name="close" size={24} color="#D8DEE9" />
               </Pressable>
             </View>
             
@@ -2524,7 +2557,7 @@ export default function RemoteScreen() {
               
               {soundLoading ? (
                 <View style={styles.settingsLoading}>
-                  <Ionicons name="sync" size={32} color="#58a6ff" />
+                  <Ionicons name="sync" size={32} color="#88C0D0" />
                   <Text style={styles.settingsLoadingText}>Loading devices...</Text>
                 </View>
               ) : (
@@ -2545,7 +2578,7 @@ export default function RemoteScreen() {
                         <Ionicons 
                           name={defaultSink === speaker.name ? "volume-high" : "volume-low"} 
                           size={20} 
-                          color={defaultSink === speaker.name ? "#3fb950" : "#8b949e"} 
+                          color={defaultSink === speaker.name ? "#A3BE8C" : "#D8DEE9"} 
                         />
                         <Text style={styles.speakerName}>{speaker.label}</Text>
                       </View>
@@ -2559,7 +2592,7 @@ export default function RemoteScreen() {
                   
                   {soundSpeakers.length === 0 && (
                     <View style={styles.settingsEmpty}>
-                      <Ionicons name="volume-mute-outline" size={48} color="#8b949e" />
+                      <Ionicons name="volume-mute-outline" size={48} color="#D8DEE9" />
                       <Text style={styles.settingsEmptyText}>No audio devices found</Text>
                     </View>
                   )}
@@ -2579,10 +2612,11 @@ export default function RemoteScreen() {
               <Pressable
                 style={styles.settingsActionButton}
                 onPress={fetchSoundDevices}>
-                <Ionicons name="refresh" size={20} color="#58a6ff" />
+                <Ionicons name="refresh" size={20} color="#88C0D0" />
                 <Text style={styles.settingsActionButtonText}>Refresh Devices</Text>
               </Pressable>
             </ScrollView>
+          </GlassSurface>
           </Pressable>
         </Pressable>
       </Modal>
@@ -2596,7 +2630,8 @@ export default function RemoteScreen() {
         <Pressable
           style={styles.editorOverlay}
           onPress={() => setIsSaveMacroVisible(false)}>
-          <Pressable style={styles.editorSheet} onPress={() => undefined}>
+          <Pressable onPress={() => undefined}>
+          <GlassSurface style={styles.editorSheet} tint="rgba(59, 66, 82, 0.88)">
             <Text style={styles.editorTitle}>{editingMacro ? 'Rename Macro' : 'Save Macro'}</Text>
             <Text style={styles.editorSubtitle}>
               {editingMacro ? 'Enter a new name for this macro.' : 'Give this recorded sequence of actions a name.'}
@@ -2605,7 +2640,7 @@ export default function RemoteScreen() {
               value={newMacroName}
               onChangeText={setNewMacroName}
               placeholder="Macro name"
-              placeholderTextColor="#8b949e"
+              placeholderTextColor="#D8DEE9"
               autoCapitalize="words"
               style={styles.input}
             />
@@ -2619,6 +2654,7 @@ export default function RemoteScreen() {
               onPress={() => setIsSaveMacroVisible(false)}>
               <Text style={styles.ghostButtonText}>Cancel</Text>
             </Pressable>
+          </GlassSurface>
           </Pressable>
         </Pressable>
       </Modal>
@@ -2651,8 +2687,142 @@ function ControlButton({
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}>
-      {icon && <Ionicons name={icon} size={iconSize} color="#c9d1d9" style={styles.buttonIcon}/>}
+      {icon && <Ionicons name={icon} size={iconSize} color="#D8DEE9" style={styles.buttonIcon}/>}
       <Text style={textStyle}>{label}</Text>
+    </Pressable>
+  );
+}
+
+// Drag-to-set vertical glass slider (volume/brightness). `onChange` fires on
+// every move for an instantly responsive fill; `onCommit` is throttled
+// during the drag and always fires once on release, so it's the one that
+// should actually talk to the network.
+function VerticalSlider({
+  value,
+  onChange,
+  onCommit,
+  color,
+  icon,
+  height = 220,
+}: {
+  value: number;
+  onChange: (pct: number) => void;
+  onCommit: (pct: number) => void;
+  color: string;
+  icon: ComponentProps<typeof Ionicons>['name'];
+  height?: number;
+}) {
+  const trackHeightRef = useRef(height);
+  const startValueRef = useRef(value);
+  const valueRef = useRef(value);
+  const lastSentRef = useRef(0);
+  valueRef.current = value;
+
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        startValueRef.current = valueRef.current;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      },
+      onPanResponderMove: (_evt, gestureState) => {
+        const delta = (-gestureState.dy / trackHeightRef.current) * 100;
+        const next = Math.round(Math.max(0, Math.min(100, startValueRef.current + delta)));
+        if (next !== valueRef.current) {
+          onChange(next);
+        }
+        const now = Date.now();
+        if (now - lastSentRef.current > 80) {
+          lastSentRef.current = now;
+          onCommit(next);
+        }
+      },
+      onPanResponderRelease: () => {
+        onCommit(valueRef.current);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      },
+    })
+  ).current;
+
+  return (
+    <View
+      style={[styles.sliderTrackVertical, { height }]}
+      onLayout={(event) => {
+        trackHeightRef.current = event.nativeEvent.layout.height || height;
+      }}
+      {...responder.panHandlers}>
+      <View style={[styles.sliderTrackFillVertical, { height: `${value}%`, backgroundColor: color }]} />
+      <Ionicons name={icon} size={14} color="rgba(236, 239, 244, 0.35)" style={styles.sliderTrackIcon} />
+      <View
+        style={[
+          styles.sliderThumb,
+          { bottom: `${Math.max(0, Math.min(92, value))}%`, borderColor: color, shadowColor: color },
+        ]}
+      />
+    </View>
+  );
+}
+
+function AppTile({
+  app,
+  fallbackIcon,
+  onLaunch,
+  onRemove,
+  onMoveLeft,
+  onMoveRight,
+}: {
+  app: { id: string; name: string; icon?: string };
+  fallbackIcon: ComponentProps<typeof Ionicons>['name'];
+  onLaunch: () => void;
+  onRemove: () => void;
+  onMoveLeft?: () => void;
+  onMoveRight?: () => void;
+}) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.appTile, pressed && styles.appTilePressed]}
+      onPress={onLaunch}>
+      <View style={styles.tileMoveCluster}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.tileMoveButton,
+            !onMoveLeft && styles.tileMoveButtonDisabled,
+            pressed && onMoveLeft && styles.pressed,
+          ]}
+          onPress={onMoveLeft}
+          disabled={!onMoveLeft}
+          hitSlop={8}>
+          <Ionicons name="chevron-back" size={12} color={onMoveLeft ? '#D8DEE9' : 'rgba(216, 222, 233, 0.25)'} />
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.tileMoveButton,
+            !onMoveRight && styles.tileMoveButtonDisabled,
+            pressed && onMoveRight && styles.pressed,
+          ]}
+          onPress={onMoveRight}
+          disabled={!onMoveRight}
+          hitSlop={8}>
+          <Ionicons name="chevron-forward" size={12} color={onMoveRight ? '#D8DEE9' : 'rgba(216, 222, 233, 0.25)'} />
+        </Pressable>
+      </View>
+      <Pressable
+        style={({ pressed }) => [styles.tileDeleteButton, pressed && styles.pressed]}
+        onPress={onRemove}
+        hitSlop={8}>
+        <Ionicons name="trash" size={13} color="#BF616A" />
+      </Pressable>
+      <View style={styles.tileIconWrap}>
+        {app.icon ? (
+          <RNImage source={{ uri: app.icon }} style={styles.tileIconImage} resizeMode="contain" />
+        ) : (
+          <Ionicons name={fallbackIcon} size={32} color="#88C0D0" />
+        )}
+      </View>
+      <Text style={styles.tileName} numberOfLines={1} ellipsizeMode="tail">
+        {app.name}
+      </Text>
     </Pressable>
   );
 }
@@ -2660,19 +2830,26 @@ function ControlButton({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0a0e17',
+    backgroundColor: '#2E3440',
+  },
+  ambientBackground: {
+    ...StyleSheet.absoluteFillObject,
   },
   container: {
     flex: 1,
     paddingHorizontal: 12,
     paddingTop: 16,
     paddingBottom: 0,
-    backgroundColor: '#0a0e17',
+  },
+  glassClip: {
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(236, 239, 244, 0.08)',
   },
   // ... existing styles
   demoBanner: {
     alignSelf: 'flex-start',
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#EBCB8B',
     borderRadius: 999,
     marginBottom: 12,
     paddingHorizontal: 12,
@@ -2682,7 +2859,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   demoBannerText: {
-    color: '#0a0e17',
+    color: '#2E3440',
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.4,
@@ -2692,80 +2869,109 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#21262d',
-    gap: 16,
+    marginBottom: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
+    minWidth: 0,
   },
   headerTextWrap: {
     flex: 1,
+    minWidth: 0,
   },
   headerMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 2,
+    marginTop: 3,
   },
   title: {
-    color: '#f0f6fc',
-    fontSize: 32,
+    color: '#ECEFF4',
+    fontSize: 24,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   deviceName: {
-    color: '#8b949e',
-    fontSize: 13,
+    color: '#D8DEE9',
+    fontSize: 12.5,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(76, 86, 106, 0.5)',
+    marginHorizontal: 6,
     flexShrink: 0,
   },
   headerStatusText: {
-    color: '#58a6ff',
-    fontSize: 12,
-    flex: 1,
+    fontSize: 12.5,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  statusPill: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    flexShrink: 0,
+  },
+  statusPillOnline: {
+    backgroundColor: 'rgba(163, 190, 140, 0.12)',
+    borderColor: 'rgba(163, 190, 140, 0.35)',
+  },
+  statusPillOffline: {
+    backgroundColor: 'rgba(191, 97, 106, 0.1)',
+    borderColor: 'rgba(191, 97, 106, 0.3)',
   },
   statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#0a0e17',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   statusOnline: {
-    backgroundColor: '#238636',
-    shadowColor: '#238636',
+    backgroundColor: '#A3BE8C',
+    shadowColor: '#A3BE8C',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
   },
   statusOffline: {
-    backgroundColor: '#da3633',
-    shadowColor: '#da3633',
+    backgroundColor: '#BF616A',
+    shadowColor: '#BF616A',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
   },
   menuButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     borderWidth: 1,
-    borderColor: '#30363d',
-    backgroundColor: '#21262d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuButtonActive: {
-    borderColor: '#58a6ff',
-    backgroundColor: '#30363d',
+    borderColor: '#88C0D0',
+    backgroundColor: 'rgba(76, 86, 106, 0.18)',
   },
   menuButtonText: {
-    color: '#c9d1d9',
+    color: '#D8DEE9',
     fontSize: 18,
   },
   loginContainer: {
@@ -2779,13 +2985,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   helperText: {
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
   },
   helperSubtext: {
-    color: '#58a6ff',
+    color: '#88C0D0',
     fontSize: 13,
     lineHeight: 18,
     textAlign: 'center',
@@ -2807,20 +3013,19 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   appsContainer: {
-    gap: 16,
+    gap: 6,
   },
   appsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
   },
   appsHeaderButtons: {
     flexDirection: 'row',
     gap: 8,
   },
   appsTitle: {
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontSize: 24,
     fontWeight: '800',
   },
@@ -2828,21 +3033,24 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   appsSubtitle: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 13,
-    marginBottom: 8,
+    marginBottom: 14,
   },
   appsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
   sectionHeader: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -2851,72 +3059,85 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   sectionTitle: {
-    color: '#58a6ff',
+    color: '#88C0D0',
     fontSize: 16,
     fontWeight: '700',
   },
-  appCard: {
-    width: '100%',
-    backgroundColor: '#161b22',
-    borderRadius: 16,
+  appTile: {
+    width: '47%',
+    backgroundColor: 'rgba(59, 66, 82, 0.5)',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#30363d',
-    padding: 12,
+    borderColor: 'rgba(236, 239, 244, 0.08)',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    gap: 10,
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
   },
-  deleteButton: {
+  appTilePressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.97 }],
+  },
+  tileDeleteButton: {
     position: 'absolute',
     top: 8,
     right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#0d1117',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(46, 52, 64, 0.7)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(236, 239, 244, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
-  appCardContent: {
+  tileMoveCluster: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    padding: 8,
+    gap: 4,
+    zIndex: 10,
   },
-  appIconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  appIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#21262d',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#30363d',
-  },
-  appIconImage: {
-    width: 56,
-    height: 56,
+  tileMoveButton: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
+    backgroundColor: 'rgba(46, 52, 64, 0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(236, 239, 244, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  appName: {
-    color: '#f0f6fc',
-    fontSize: 15,
+  tileMoveButtonDisabled: {
+    opacity: 0.4,
+  },
+  tileIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(136, 192, 208, 0.12)',
+    borderColor: 'rgba(136, 192, 208, 0.4)',
+  },
+  tileIconImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+  },
+  tileName: {
+    color: '#ECEFF4',
+    fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',
-  },
-  appCategory: {
-    color: '#8b949e',
-    fontSize: 11,
-    fontWeight: '600',
-    textAlign: 'center',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   emptyApps: {
     alignItems: 'center',
@@ -2925,36 +3146,36 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyAppsText: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 18,
     fontWeight: '600',
   },
   emptyAppsSubtext: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 13,
   },
   addAppForm: {
-    backgroundColor: '#161b22',
+    backgroundColor: 'rgba(59, 66, 82, 0.55)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     padding: 16,
     marginBottom: 16,
     gap: 12,
   },
   addAppTitle: {
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 4,
   },
   appInput: {
-    backgroundColor: '#0d1117',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     padding: 14,
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontSize: 15,
   },
   appTypeSelector: {
@@ -2969,21 +3190,21 @@ const styles = StyleSheet.create({
     gap: 6,
     padding: 12,
     borderRadius: 10,
-    backgroundColor: '#0d1117',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   appTypeButtonActive: {
-    backgroundColor: '#21262d',
-    borderColor: '#58a6ff',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    borderColor: '#88C0D0',
   },
   appTypeText: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 14,
     fontWeight: '600',
   },
   appTypeTextActive: {
-    color: '#58a6ff',
+    color: '#88C0D0',
   },
   addAppButtons: {
     flexDirection: 'row',
@@ -2997,20 +3218,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   cancelButtonText: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 15,
     fontWeight: '700',
   },
   saveButton: {
-    backgroundColor: '#238636',
+    backgroundColor: '#A3BE8C',
   },
   saveButtonText: {
-    color: '#ffffff',
+    color: '#ECEFF4',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -3022,31 +3243,28 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: '#161b22',
     borderWidth: 2,
-    borderColor: '#30363d',
+    borderColor: 'rgba(236, 239, 244, 0.14)',
     position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
-    elevation: 8,
   },
   dpadButton: {
     position: 'absolute',
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(76, 86, 106, 0.14)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 4,
   },
   dpadTop: {
     top: 12,
@@ -3065,7 +3283,7 @@ const styles = StyleSheet.create({
     top: 88,
   },
   dpadButtonText: {
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontSize: 28,
     fontWeight: '800',
   },
@@ -3076,19 +3294,18 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: '#238636',
+    backgroundColor: 'rgba(136, 192, 208, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#238636',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowColor: '#88C0D0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 10,
     borderWidth: 2,
-    borderColor: '#2ea043',
+    borderColor: '#81A1C1',
   },
   okButtonText: {
-    color: '#ffffff',
+    color: '#ECEFF4',
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -3130,12 +3347,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   controlLabel: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 11,
     fontWeight: '600',
   },
   controlSliderVertical: {
-    height: 200,
+    height: 230,
     alignItems: 'center',
     gap: 8,
   },
@@ -3143,7 +3360,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 10,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3151,17 +3368,52 @@ const styles = StyleSheet.create({
     flex: 1,
     width: 12,
     borderRadius: 6,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     overflow: 'hidden',
     justifyContent: 'flex-end',
   },
   controlTrackFill: {
     width: '100%',
-    backgroundColor: '#238636',
+    backgroundColor: '#A3BE8C',
     borderRadius: 6,
   },
+  sliderTrackVertical: {
+    flex: 1,
+    width: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(67, 76, 94, 0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(236, 239, 244, 0.1)',
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  sliderTrackFillVertical: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderRadius: 18,
+  },
+  sliderTrackIcon: {
+    position: 'absolute',
+    top: 10,
+    alignSelf: 'center',
+  },
+  sliderThumb: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ECEFF4',
+    borderWidth: 3,
+    marginBottom: -14,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+  },
   controlValue: {
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
@@ -3171,7 +3423,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   groupLabel: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -3199,14 +3451,14 @@ const styles = StyleSheet.create({
   sliderTrack: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     overflow: 'hidden',
   },
   sliderFill: {
     height: '100%',
-    backgroundColor: '#238636',
+    backgroundColor: '#A3BE8C',
     borderRadius: 3,
   },
   sliderButtons: {
@@ -3217,9 +3469,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3227,15 +3479,15 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 64,
     borderRadius: 16,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   muteButton: {
-    backgroundColor: '#1f6feb',
-    borderColor: '#1f6feb',
+    backgroundColor: '#88C0D0',
+    borderColor: '#88C0D0',
     flex: 1.2,
   },
   muteButtonFull: {
@@ -3245,12 +3497,12 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#1f6feb',
+    backgroundColor: '#88C0D0',
     borderWidth: 1,
-    borderColor: '#1f6feb',
+    borderColor: '#88C0D0',
   },
   muteButtonText: {
-    color: '#ffffff',
+    color: '#ECEFF4',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -3267,67 +3519,67 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   brightnessPresetButtonActive: {
-    backgroundColor: '#d29922',
-    borderColor: '#d29922',
+    backgroundColor: '#EBCB8B',
+    borderColor: '#EBCB8B',
   },
   brightnessPresetText: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 13,
     fontWeight: '600',
   },
   brightnessPresetTextActive: {
-    color: '#ffffff',
+    color: '#ECEFF4',
     fontWeight: '700',
   },
   playButtonSmall: {
-    backgroundColor: '#238636',
-    borderColor: '#238636',
+    backgroundColor: '#A3BE8C',
+    borderColor: '#A3BE8C',
   },
   playButtonTextSmall: {
-    color: '#ffffff',
+    color: '#ECEFF4',
     fontWeight: '700',
   },
   actionButtonSmall: {
     flex: 1,
     minHeight: 56,
     borderRadius: 14,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
   actionButtonText: {
-    color: '#c9d1d9',
+    color: '#D8DEE9',
     fontSize: 13,
     fontWeight: '600',
   },
   closeButtonSmall: {
-    backgroundColor: '#da3633',
-    borderColor: '#da3633',
+    backgroundColor: '#BF616A',
+    borderColor: '#BF616A',
   },
   closeButtonTextSmall: {
-    color: '#ffffff',
+    color: '#ECEFF4',
     fontWeight: '700',
   },
   recordingButton: {
-    backgroundColor: '#da3633',
-    borderColor: '#da3633',
+    backgroundColor: '#BF616A',
+    borderColor: '#BF616A',
   },
   fullscreenButtonSmall: {
-    backgroundColor: '#21262d',
-    borderColor: '#30363d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   fullscreenButtonTextSmall: {
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontWeight: '600',
   },
   buttonIcon: {
@@ -3347,9 +3599,9 @@ const styles = StyleSheet.create({
     minHeight: 140,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#30363d',
-    backgroundColor: '#0d1117',
-    color: '#c9d1d9',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    color: '#D8DEE9',
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
@@ -3368,15 +3620,15 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 54,
     borderRadius: 12,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
   keyButtonText: {
-    color: '#c9d1d9',
+    color: '#D8DEE9',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -3394,15 +3646,14 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: '#30363d',
-    backgroundColor: '#0d1117',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 6,
   },
   touchpadInner: {
     alignItems: 'center',
@@ -3410,12 +3661,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   touchpadText: {
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontSize: 24,
     fontWeight: '700',
   },
   touchpadHint: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 13,
   },
   scrollBar: {
@@ -3428,9 +3679,9 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 10,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3438,9 +3689,9 @@ const styles = StyleSheet.create({
     flex: 1,
     width: 50,
     borderRadius: 10,
-    backgroundColor: '#0d1117',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   touchpadButtons: {
     flexDirection: 'row',
@@ -3450,53 +3701,52 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 56,
     borderRadius: 14,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
   touchpadButtonText: {
-    color: '#c9d1d9',
+    color: '#D8DEE9',
     fontSize: 14,
     fontWeight: '600',
   },
   tabBarContainer: {
     width: '100%',
-    backgroundColor: '#161b22',
+    paddingHorizontal: 4,
+    paddingBottom: 4,
   },
   tabBar: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#30363d',
-    backgroundColor: '#161b22',
-    paddingBottom: 8,
+    borderRadius: 22,
+    paddingVertical: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 8,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
   },
   tabItem: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
+    marginVertical: 2,
+    marginHorizontal: 2,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
   tabItemActive: {
-    borderTopWidth: 3,
-    borderTopColor: '#238636',
-    backgroundColor: '#0d1117',
+    backgroundColor: 'rgba(136, 192, 208, 0.16)',
   },
   tabItemText: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 12,
     fontWeight: '600',
   },
   tabItemTextActive: {
-    color: '#238636',
+    color: '#81A1C1',
     fontWeight: '700',
   },
   addressRow: {
@@ -3512,15 +3762,15 @@ const styles = StyleSheet.create({
   input: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#30363d',
-    backgroundColor: '#0d1117',
-    color: '#c9d1d9',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    color: '#D8DEE9',
     paddingHorizontal: 16,
     paddingVertical: 13,
     fontSize: 15,
   },
   formSectionLabel: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.4,
@@ -3534,30 +3784,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   primaryButton: {
-    backgroundColor: '#238636',
+    backgroundColor: '#A3BE8C',
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: '#ECEFF4',
     fontSize: 16,
     fontWeight: '700',
   },
   secondaryButton: {
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#58a6ff',
+    borderColor: '#88C0D0',
   },
   secondaryButtonText: {
-    color: '#58a6ff',
+    color: '#88C0D0',
     fontSize: 16,
     fontWeight: '700',
   },
   ghostButton: {
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   ghostButtonText: {
-    color: '#c9d1d9',
+    color: '#D8DEE9',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -3567,25 +3817,23 @@ const styles = StyleSheet.create({
   },
   menuOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(10, 14, 23, 0.7)',
+    backgroundColor: 'rgba(46, 52, 64, 0.55)',
     justifyContent: 'flex-start',
     paddingTop: 80,
     paddingHorizontal: 20,
     alignItems: 'flex-end',
   },
-  menuSheet: {
+  menuSheetWrap: {
     width: '100%',
     maxWidth: 320,
+  },
+  menuSheet: {
+    width: '100%',
     borderRadius: 20,
-    backgroundColor: '#161b22',
-    borderWidth: 1,
-    borderColor: '#30363d',
-    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.5,
     shadowRadius: 16,
-    elevation: 16,
   },
   menuHeader: {
     flexDirection: 'row',
@@ -3593,16 +3841,16 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#0d1117',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
   },
   menuHeaderTitle: {
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontSize: 20,
     fontWeight: '700',
   },
   menuDivider: {
     height: 1,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
   },
   menuSection: {
     paddingHorizontal: 16,
@@ -3610,7 +3858,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   menuSectionTitle: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -3624,13 +3872,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   activeBadge: {
-    backgroundColor: '#238636',
+    backgroundColor: '#A3BE8C',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   activeBadgeText: {
-    color: '#ffffff',
+    color: '#ECEFF4',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -3641,35 +3889,35 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#30363d',
-    backgroundColor: '#0d1117',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
   systemRowActive: {
-    borderColor: '#238636',
-    backgroundColor: '#132218',
+    borderColor: '#A3BE8C',
+    backgroundColor: 'rgba(163, 190, 140, 0.14)',
   },
   systemRowText: {
     flex: 1,
     gap: 2,
   },
   systemName: {
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontSize: 15,
     fontWeight: '700',
   },
   systemMeta: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 12,
   },
   systemBadge: {
-    color: '#7ee787',
+    color: '#A3BE8C',
     fontSize: 12,
     fontWeight: '700',
   },
   systemSwapLabel: {
-    color: '#58a6ff',
+    color: '#88C0D0',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -3683,48 +3931,44 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   menuItemPressed: {
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
   },
   menuItemText: {
-    color: '#58a6ff',
+    color: '#88C0D0',
     fontSize: 15,
     fontWeight: '600',
   },
   menuItemDangerText: {
-    color: '#ff7b72',
+    color: '#BF616A',
     fontSize: 15,
     fontWeight: '600',
   },
   menuItemWarningText: {
-    color: '#ffa657',
+    color: '#EBCB8B',
     fontSize: 15,
     fontWeight: '600',
   },
   editorOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(10, 14, 23, 0.72)',
+    backgroundColor: 'rgba(46, 52, 64, 0.55)',
   },
   editorSheet: {
+    width: '100%',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    backgroundColor: '#161b22',
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#30363d',
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 32,
     gap: 12,
   },
   editorTitle: {
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontSize: 22,
     fontWeight: '800',
   },
   editorSubtitle: {
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 4,
@@ -3735,18 +3979,18 @@ const styles = StyleSheet.create({
   channelCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161b22',
+    backgroundColor: 'rgba(59, 66, 82, 0.55)',
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
     gap: 14,
   },
   channelIconContainer: {
     width: 56,
     height: 56,
     borderRadius: 12,
-    backgroundColor: '#0d1117',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3756,26 +4000,29 @@ const styles = StyleSheet.create({
   },
   channelNumber: {
     fontSize: 13,
-    color: '#58a6ff',
+    color: '#88C0D0',
     fontWeight: '600',
   },
   channelName: {
     fontSize: 17,
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontWeight: '600',
   },
   channelMeta: {
     fontSize: 13,
-    color: '#8b949e',
+    color: '#D8DEE9',
   },
   // Settings Modals
   settingsOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(46, 52, 64, 0.55)',
     justifyContent: 'flex-end',
   },
+  settingsSheetWrap: {
+    flex: 1,
+    width: '100%',
+  },
   settingsSheet: {
-    backgroundColor: '#161b22',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '85%',
@@ -3787,13 +4034,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#30363d',
+    borderBottomColor: 'rgba(76, 86, 106, 0.18)',
     gap: 12,
   },
   settingsTitle: {
     flex: 1,
     fontSize: 20,
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontWeight: '600',
   },
   settingsCloseButton: {
@@ -3805,7 +4052,7 @@ const styles = StyleSheet.create({
   },
   settingsSectionTitle: {
     fontSize: 16,
-    color: '#8b949e',
+    color: '#D8DEE9',
     fontWeight: '600',
     marginBottom: 12,
   },
@@ -3820,7 +4067,7 @@ const styles = StyleSheet.create({
   },
   settingsLoadingText: {
     fontSize: 16,
-    color: '#8b949e',
+    color: '#D8DEE9',
   },
   settingsEmpty: {
     alignItems: 'center',
@@ -3830,38 +4077,38 @@ const styles = StyleSheet.create({
   },
   settingsEmptyText: {
     fontSize: 16,
-    color: '#8b949e',
+    color: '#D8DEE9',
   },
   settingsInput: {
-    backgroundColor: '#0d1117',
-    color: '#f0f6fc',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    color: '#ECEFF4',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   settingsMessage: {
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
   },
   settingsMessageSuccess: {
-    backgroundColor: 'rgba(63, 185, 80, 0.2)',
+    backgroundColor: 'rgba(163, 190, 140, 0.2)',
   },
   settingsMessageError: {
-    backgroundColor: 'rgba(248, 81, 73, 0.2)',
+    backgroundColor: 'rgba(191, 97, 106, 0.2)',
   },
   settingsMessageText: {
     fontSize: 14,
-    color: '#f0f6fc',
+    color: '#ECEFF4',
   },
   settingsActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     padding: 14,
     borderRadius: 8,
     gap: 8,
@@ -3869,7 +4116,7 @@ const styles = StyleSheet.create({
   },
   settingsActionButtonText: {
     fontSize: 16,
-    color: '#58a6ff',
+    color: '#88C0D0',
     fontWeight: '600',
   },
   // WiFi
@@ -3877,16 +4124,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0d1117',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
     padding: 14,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   networkItemActive: {
-    borderColor: '#3fb950',
-    backgroundColor: 'rgba(63, 185, 80, 0.1)',
+    borderColor: '#A3BE8C',
+    backgroundColor: 'rgba(163, 190, 140, 0.1)',
   },
   networkItemLeft: {
     flexDirection: 'row',
@@ -3901,24 +4148,24 @@ const styles = StyleSheet.create({
   },
   networkName: {
     fontSize: 16,
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontWeight: '500',
   },
   networkSignal: {
     fontSize: 14,
-    color: '#8b949e',
+    color: '#D8DEE9',
   },
   // Bluetooth
   bluetoothItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0d1117',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
     padding: 14,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   bluetoothItemLeft: {
     flexDirection: 'row',
@@ -3931,12 +4178,12 @@ const styles = StyleSheet.create({
   },
   bluetoothName: {
     fontSize: 16,
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontWeight: '500',
   },
   bluetoothMac: {
     fontSize: 12,
-    color: '#8b949e',
+    color: '#D8DEE9',
   },
   bluetoothActions: {
     flexDirection: 'row',
@@ -3944,19 +4191,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bluetoothConnectButton: {
-    backgroundColor: '#238636',
+    backgroundColor: '#A3BE8C',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
   },
   bluetoothConnectText: {
     fontSize: 14,
-    color: '#ffffff',
+    color: '#ECEFF4',
     fontWeight: '600',
   },
   bluetoothConnectedText: {
     fontSize: 14,
-    color: '#3fb950',
+    color: '#A3BE8C',
     fontWeight: '600',
   },
   bluetoothRemoveButton: {
@@ -3967,16 +4214,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0d1117',
+    backgroundColor: 'rgba(46, 52, 64, 0.6)',
     padding: 14,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   speakerItemActive: {
-    borderColor: '#3fb950',
-    backgroundColor: 'rgba(63, 185, 80, 0.1)',
+    borderColor: '#A3BE8C',
+    backgroundColor: 'rgba(163, 190, 140, 0.1)',
   },
   speakerItemLeft: {
     flexDirection: 'row',
@@ -3986,23 +4233,23 @@ const styles = StyleSheet.create({
   },
   speakerName: {
     fontSize: 16,
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     fontWeight: '500',
   },
   speakerActiveBadge: {
-    backgroundColor: '#3fb950',
+    backgroundColor: '#A3BE8C',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   speakerActiveText: {
     fontSize: 12,
-    color: '#ffffff',
+    color: '#ECEFF4',
     fontWeight: '600',
   },
   settingsSubtitle: {
     fontSize: 14,
-    color: '#8b949e',
+    color: '#D8DEE9',
     marginBottom: 16,
   },
   appItem: {
@@ -4010,7 +4257,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderRadius: 12,
     marginBottom: 8,
   },
@@ -4034,27 +4281,27 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   appItemAdded: {
-    backgroundColor: '#1a2332',
+    backgroundColor: 'rgba(163, 190, 140, 0.14)',
     borderWidth: 1,
-    borderColor: '#3fb950',
+    borderColor: '#A3BE8C',
   },
   appRemoveButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: 'rgba(248, 81, 73, 0.1)',
+    backgroundColor: 'rgba(191, 97, 106, 0.1)',
   },
   addAppCard: {
-    backgroundColor: '#161b22',
+    backgroundColor: 'rgba(59, 66, 82, 0.55)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   addAppCardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#f0f6fc',
+    color: '#ECEFF4',
     marginBottom: 12,
   },
   addAppChoiceButtons: {
@@ -4070,21 +4317,21 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#21262d',
+    backgroundColor: 'rgba(67, 76, 94, 0.45)',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   addAppChoiceButtonActive: {
-    backgroundColor: 'rgba(88, 166, 255, 0.15)',
-    borderColor: '#58a6ff',
+    backgroundColor: 'rgba(136, 192, 208, 0.15)',
+    borderColor: '#88C0D0',
   },
   addAppChoiceButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#8b949e',
+    color: '#D8DEE9',
   },
   addAppChoiceButtonTextActive: {
-    color: '#58a6ff',
+    color: '#88C0D0',
   },
 });

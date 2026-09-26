@@ -943,12 +943,22 @@ def get_current_volume():
     return 50  # Default fallback
 
 
-def control_system_volume(action: str):
+def control_system_volume(action: str, level: int = None):
     action = action.upper().strip()
 
     wpctl = shutil.which("wpctl")
     if wpctl:
-        if action == "VOLUME_UP":
+        if action == "SET_VOLUME":
+            target = max(0, min(100, int(level if level is not None else 50)))
+            result = subprocess.run(
+                [wpctl, "set-volume", "-l", "1.5", "@DEFAULT_AUDIO_SINK@", f"{target}%"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                return True
+        elif action == "VOLUME_UP":
             result = subprocess.run(
                 [wpctl, "set-volume", "-l", "1.5", "@DEFAULT_AUDIO_SINK@", "5%+"],
                 check=False,
@@ -978,7 +988,17 @@ def control_system_volume(action: str):
 
     pactl = shutil.which("pactl")
     if pactl:
-        if action == "VOLUME_UP":
+        if action == "SET_VOLUME":
+            target = max(0, min(100, int(level if level is not None else 50)))
+            result = subprocess.run(
+                [pactl, "set-sink-volume", "@DEFAULT_SINK@", f"{target}%"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                return True
+        elif action == "VOLUME_UP":
             result = subprocess.run(
                 [pactl, "set-sink-volume", "@DEFAULT_SINK@", "+5%"],
                 check=False,
@@ -1008,7 +1028,12 @@ def control_system_volume(action: str):
 
     amixer = shutil.which("amixer")
     if amixer:
-        if action == "VOLUME_UP":
+        if action == "SET_VOLUME":
+            target = max(0, min(100, int(level if level is not None else 50)))
+            result = subprocess.run([amixer, "set", "Master", f"{target}%"], check=False, capture_output=True, text=True)
+            if result.returncode == 0:
+                return True
+        elif action == "VOLUME_UP":
             result = subprocess.run([amixer, "set", "Master", "5%+"], check=False, capture_output=True, text=True)
             if result.returncode == 0:
                 return True
@@ -1674,40 +1699,65 @@ class WebSocketControlServer(threading.Thread):
                         if not app_command:
                             await websocket.send(json.dumps({"status": "error", "error": "command required for native app"}))
                             continue
-                        
-                        # Schedule GUI work on main thread
-                        QTimer.singleShot(0, lambda name=app_name, cmd=app_command: self.window.add_native_app(name, cmd, notify=False))
-                        logging.info("Added native app: %s (%s)", app_name, app_command)
-                        
+
+                        # Actually mutating config/QML state has to happen on the
+                        # Qt main thread; this handler runs on the asyncio thread,
+                        # where a bare QTimer.singleShot never fires (no Qt event
+                        # loop pumping it there). Go through the same thread-safe
+                        # queue the D-pad/text/pointer remote events already use.
+                        self.window.queue_remote_event({
+                            "type": "add_app", "kind": "native", "name": app_name, "command": app_command
+                        })
+                        logging.info("Queued add native app: %s (%s)", app_name, app_command)
+
                     elif app_kind == "web":
                         app_url = str(payload.get("url", "")).strip()
                         if not app_url:
                             await websocket.send(json.dumps({"status": "error", "error": "url required for web app"}))
                             continue
-                        
-                        # Schedule GUI work on main thread
-                        QTimer.singleShot(0, lambda name=app_name, url=app_url: self.window.add_web_app(name, url, notify=False))
-                        logging.info("Added web app: %s (%s)", app_name, app_url)
-                    
+
+                        self.window.queue_remote_event({
+                            "type": "add_app", "kind": "web", "name": app_name, "url": app_url
+                        })
+                        logging.info("Queued add web app: %s (%s)", app_name, app_url)
+
                     await websocket.send(json.dumps({"status": "ok", "type": "app_added"}))
                     continue
 
                 # Handle remove app request
                 if message_type == "remove_app":
                     app_id = str(payload.get("id", "")).strip()
-                    
+
                     if not app_id:
                         await websocket.send(json.dumps({"status": "error", "error": "app id required"}))
                         continue
-                    
-                    self.window.remove_app_by_id(app_id)
-                    logging.info("Removed app: %s", app_id)
-                    
+
+                    self.window.queue_remote_event({"type": "remove_app", "id": app_id})
+                    logging.info("Queued remove app: %s", app_id)
+
                     await websocket.send(json.dumps({
-                        "status": "ok", 
+                        "status": "ok",
                         "type": "app_removed",
                         "message": f"App removed successfully"
                     }))
+                    continue
+
+                # Handle reorder app request
+                if message_type == "reorder_app":
+                    app_id = str(payload.get("id", "")).strip()
+                    app_kind = str(payload.get("kind", ""))
+                    direction = str(payload.get("direction", "")).lower()
+
+                    if not app_id or app_kind not in ("native", "web") or direction not in ("left", "right"):
+                        await websocket.send(json.dumps({"status": "error", "error": "invalid reorder request"}))
+                        continue
+
+                    self.window.queue_remote_event({
+                        "type": "reorder_app", "id": app_id, "kind": app_kind, "direction": direction
+                    })
+                    logging.info("Queued reorder app: %s %s", app_id, direction)
+
+                    await websocket.send(json.dumps({"status": "ok", "type": "app_reordered"}))
                     continue
 
                 # Handle app launch request
@@ -1886,6 +1936,27 @@ class WebSocketControlServer(threading.Thread):
                             "status": "error",
                             "type": "volume_level",
                             "message": f"Failed to get volume: {exc}"
+                        }))
+                    continue
+
+                # Handle Volume set request
+                if message_type == "set_volume":
+                    volume_level = int(payload.get("volume", 50))
+                    try:
+                        success = control_system_volume("SET_VOLUME", volume_level)
+                        await websocket.send(json.dumps({
+                            "status": "ok" if success else "error",
+                            "type": "volume_set",
+                            "success": success,
+                            "volume": volume_level,
+                            "message": f"Volume set to {volume_level}%" if success else "Failed to set volume"
+                        }))
+                    except Exception as exc:
+                        logging.exception("Failed to set volume from remote")
+                        await websocket.send(json.dumps({
+                            "status": "error",
+                            "type": "volume_set",
+                            "message": f"Failed to set volume: {exc}"
                         }))
                     continue
 
@@ -2854,7 +2925,7 @@ class LauncherWindow(QMainWindow):
                     "name": app_name,
                     "kind": entry["kind"],
                     "icon": icon_data,  # Base64 data URI
-                    "category": category_name
+                    "category": self.CATEGORY_DISPLAY_NAMES.get(category_name, category_name)
                 })
         
         return apps_list
@@ -4579,6 +4650,26 @@ class LauncherWindow(QMainWindow):
                 return
             if event_type == "pointer":
                 self.process_remote_pointer_event(event)
+                return
+            if event_type == "add_app":
+                kind = str(event.get("kind", ""))
+                name = str(event.get("name", ""))
+                if kind == "native":
+                    self.add_native_app(name, str(event.get("command", "")), notify=False)
+                elif kind == "web":
+                    self.add_web_app(name, str(event.get("url", "")), notify=False)
+                return
+            if event_type == "remove_app":
+                self.remove_app_by_id(str(event.get("id", "")))
+                return
+            if event_type == "reorder_app":
+                self.reorder_app(
+                    {"id": str(event.get("id", ""))},
+                    str(event.get("kind", "")),
+                    str(event.get("direction", "")),
+                    0,
+                    [],
+                )
                 return
 
         self.process_remote_action(str(event))
