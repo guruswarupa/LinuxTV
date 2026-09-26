@@ -1,7 +1,12 @@
 #!/bin/bash
-# Auto-format persistence partition if it exists but is not ext4
-# This script runs during boot to ensure Windows and macOS users
-# who created the partition but couldn't format it get a working persistence setup
+# Set up the persistence partition on first boot -- creating it if it
+# doesn't exist yet, then formatting it if needed.
+#
+# The flash tool also tries to create this partition at flash time (via
+# interactive fdisk), but that depends on the fdisk version and USB
+# controller behavior of whatever machine someone flashes from, and can
+# silently fail there. This is the guaranteed path: it runs inside the
+# image we control, so it doesn't depend on the flashing machine at all.
 
 set -e
 
@@ -23,9 +28,41 @@ echo "Base device: $BASE_DEVICE"
 # Find the third partition on this device (persistence partition)
 PERSIST_PARTITION="${BASE_DEVICE}3"
 
-# Check if the third partition exists
+# Create the partition if the flash step didn't already leave one in place.
 if [ ! -b "$PERSIST_PARTITION" ]; then
-    echo "Persistence partition ($PERSIST_PARTITION) not found, exiting."
+    echo "Persistence partition ($PERSIST_PARTITION) not found; creating it."
+
+    if ! command -v parted >/dev/null 2>&1; then
+        echo "parted not available; cannot create persistence partition. Exiting."
+        exit 0
+    fi
+
+    # Same "start right after the last existing partition" layout the flash
+    # tool uses, but computed here and created non-interactively with
+    # parted instead of scripted fdisk keystrokes.
+    LAST_END_SECTOR=$(lsblk -nplb -o TYPE,START,SIZE "$BASE_DEVICE" 2>/dev/null | \
+        awk '$1 == "part" { end = $2 + int($3 / 512); if (end > max) max = end } END { print max + 0 }')
+
+    if [ -z "$LAST_END_SECTOR" ] || [ "$LAST_END_SECTOR" -eq 0 ]; then
+        echo "Could not determine existing partition layout; not creating persistence partition."
+        exit 0
+    fi
+
+    NEW_START_MIB=$(( (LAST_END_SECTOR * 512 / 1024 / 1024) + 1 ))
+    echo "Creating persistence partition on $BASE_DEVICE starting at ${NEW_START_MIB}MiB..."
+
+    if parted --script "$BASE_DEVICE" mkpart primary ext4 "${NEW_START_MIB}MiB" 100%; then
+        udevadm settle 2>/dev/null || true
+        partprobe "$BASE_DEVICE" 2>/dev/null || true
+        sleep 2
+    else
+        echo "Failed to create persistence partition. Exiting."
+        exit 0
+    fi
+fi
+
+if [ ! -b "$PERSIST_PARTITION" ]; then
+    echo "Persistence partition ($PERSIST_PARTITION) still not found after creation attempt, exiting."
     exit 0
 fi
 
