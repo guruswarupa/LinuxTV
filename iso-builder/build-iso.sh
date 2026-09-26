@@ -69,7 +69,12 @@ lb config \
   --bootappend-live "boot=live components quiet splash loglevel=0 vt.global_cursor_default=0 persistence" \
   --linux-flavours amd64 \
   --apt-recommends false \
-  --debian-installer-gui false
+  --debian-installer-gui false \
+  --mirror-bootstrap http://deb.debian.org/debian/ \
+  --mirror-chroot http://deb.debian.org/debian/ \
+  --mirror-chroot-security http://security.debian.org/debian-security/ \
+  --mirror-binary http://deb.debian.org/debian/ \
+  --mirror-binary-security http://security.debian.org/debian-security/
 
 lb build 2>&1 | tee "$OUTPUT_LOG"
 

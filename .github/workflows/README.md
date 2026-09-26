@@ -53,8 +53,15 @@ those two folders once via the SourceForge file manager before the first run
   workflow end to end — double-check the first run of each.
 - `r0adkll/upload-google-play@v1` is a long-standing, widely-used action for
   this; worth a quick glance at its repo for any changes before relying on it.
-- The ISO build installs `live-build` and runs as root inside the job, as
-  `build-iso.sh` already requires locally — no change to that script was needed.
+- `build-iso.sh` now passes explicit `--mirror-bootstrap`/`--mirror-chroot`/
+  `--mirror-binary` (+ `-security`) flags pointing at `deb.debian.org` /
+  `security.debian.org`. Without them, `live-build` fell back to the *build
+  host's* default apt mirror to bootstrap Debian trixie — harmless on a
+  Debian host, but on the Ubuntu GitHub Actions runner that meant trying to
+  fetch trixie from `archive.ubuntu.com`, which doesn't have it
+  (`Failed getting release file .../dists/trixie/Release`). This is a real
+  fix to the script itself, not a CI-only workaround, so it also makes local
+  builds reproducible regardless of what host they're run from.
 - The Android workflow installs SDK packages by calling `sdkmanager` directly
   (`android-actions/setup-android@v3` fails on ubuntu-latest trying to touch
   the removed legacy `tools` package) with `platforms;android-35`,
