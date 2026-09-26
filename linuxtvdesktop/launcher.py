@@ -1624,7 +1624,8 @@ class WebSocketControlServer(threading.Thread):
                 if message_type == "key":
                     key = str(payload.get("key", "")).upper()
                     if key:
-                        self.window.queue_remote_event({"type": "key", "key": key})
+                        modifiers = payload.get("modifiers") or []
+                        self.window.queue_remote_event({"type": "key", "key": key, "modifiers": modifiers})
                         await websocket.send(json.dumps({"status": "ok", "type": "key", "key": key}))
                     else:
                         await websocket.send(json.dumps({"status": "error", "error": "invalid key"}))
@@ -4646,7 +4647,9 @@ class LauncherWindow(QMainWindow):
                 self.send_remote_text_to_active_window(str(event.get("text", "")))
                 return
             if event_type == "key":
-                self.send_remote_special_key_to_active_window(str(event.get("key", "")))
+                self.send_remote_special_key_to_active_window(
+                    str(event.get("key", "")), event.get("modifiers")
+                )
                 return
             if event_type == "pointer":
                 self.process_remote_pointer_event(event)
@@ -5007,7 +5010,7 @@ class LauncherWindow(QMainWindow):
         )
         logging.info("Forwarded remote text to active window")
 
-    def send_remote_special_key_to_active_window(self, key: str):
+    def send_remote_special_key_to_active_window(self, key: str, modifiers: list = None):
         if not key:
             return
 
@@ -5017,13 +5020,25 @@ class LauncherWindow(QMainWindow):
             "BACKSPACE": "BackSpace",
             "ESCAPE": "Escape",
             "TAB": "Tab",
+            "DELETE": "Delete",
+            "END": "End",
+            "PAGE_UP": "Prior",
+            "PAGE_DOWN": "Next",
+            "F5": "F5",
+            "A": "a",
+            "C": "c",
+            "V": "v",
+            "X": "x",
+            "Z": "z",
         }
         key_name = key_map.get(key.upper())
         if not key_name:
             logging.warning("Unknown remote special key: %s", key)
             return
 
-        if self.launcher_context_is_active():
+        modifiers = [str(m).lower() for m in (modifiers or []) if str(m).lower() in ("ctrl", "alt", "shift")]
+
+        if not modifiers and self.launcher_context_is_active():
             qt_special_key_map = {
                 "ENTER": (Qt.Key_Return, Qt.NoModifier, "\r"),
                 "SPACE": (Qt.Key_Space, Qt.NoModifier, " "),
@@ -5045,8 +5060,13 @@ class LauncherWindow(QMainWindow):
             return
 
         self.focus_remote_target_window(xdotool, target_window)
-        subprocess.run([xdotool, "key", "--window", target_window, "--clearmodifiers", key_name], check=False)
-        logging.info("Forwarded remote special key %s to active window", key)
+        if modifiers:
+            combo = "+".join(modifiers + [key_name])
+            subprocess.run([xdotool, "key", "--window", target_window, combo], check=False)
+            logging.info("Forwarded remote key combo %s to active window", combo)
+        else:
+            subprocess.run([xdotool, "key", "--window", target_window, "--clearmodifiers", key_name], check=False)
+            logging.info("Forwarded remote special key %s to active window", key)
 
     def process_remote_pointer_event(self, event):
         event_type = str(event.get("event", "")).lower()
@@ -5206,7 +5226,7 @@ class LauncherWindow(QMainWindow):
         
         # Try to toggle fullscreen for the active window using xdotool
         xdotool, active_window = self.active_system_window()
-        
+
         if xdotool and active_window:
             # Don't toggle the launcher window
             if active_window in self.launcher_window_ids():
@@ -5216,43 +5236,38 @@ class LauncherWindow(QMainWindow):
                 else:
                     self.showFullScreen()
                 return
-            
+
             logging.info("Toggling fullscreen for active window %s", active_window)
+
+            # Ask the window manager to toggle the EWMH fullscreen hint
+            # directly instead of guessing an app-specific keybinding.
+            # Sending 'f' only fullscreens a YouTube-style <video> player
+            # via its own page JS -- it does nothing (or types "f" into
+            # whatever has focus) on Netflix, Prime Video, and most other
+            # sites, and plenty of native apps don't bind F11 either. A
+            # wmctrl fullscreen toggle works uniformly for any window --
+            # native app or browser -- and browsers already react to their
+            # own window going fullscreen by hiding their chrome, the same
+            # as if F11 had been pressed inside them.
+            wmctrl = shutil.which("wmctrl")
+            if wmctrl:
+                try:
+                    subprocess.run(
+                        [wmctrl, "-i", "-r", active_window, "-b", "toggle,fullscreen"],
+                        check=False,
+                        timeout=3,
+                    )
+                    return
+                except Exception as e:
+                    logging.exception("Failed to toggle fullscreen via wmctrl: %s", e)
+
+            # Fall back to F11 if wmctrl is unavailable for some reason.
             try:
-                # Check if the active window is a browser
-                is_browser = self._is_browser_window(xdotool, active_window)
-                
-                if is_browser:
-                    # Browsers use 'f' key for fullscreen toggle
-                    logging.info("Browser detected, sending 'f' key for fullscreen toggle")
-                    subprocess.run([xdotool, "key", "f"], check=False, timeout=3)
-                else:
-                    # Send F11 key to toggle fullscreen (standard for most apps)
-                    subprocess.run([xdotool, "key", "F11"], check=False, timeout=3)
+                subprocess.run([xdotool, "key", "F11"], check=False, timeout=3)
             except Exception as e:
                 logging.exception("Failed to toggle fullscreen: %s", e)
         else:
             logging.warning("No active window found for fullscreen toggle")
-    
-    def _is_browser_window(self, xdotool, window_id):
-        """Check if the active window is a browser."""
-        try:
-            # Get window class/name to detect browser
-            window_class = subprocess.run(
-                [xdotool, "getwindowclassname", window_id],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=2
-            ).stdout.strip().lower()
-            
-            # Check if it's a browser window
-            is_browser = any(browser in window_class for browser in ['brave', 'chrome', 'chromium', 'firefox'])
-            
-            return is_browser
-        except Exception as e:
-            logging.debug("Failed to detect browser window: %s", e)
-            return False
 
     def check_active_process(self):
         if not self.active_process:

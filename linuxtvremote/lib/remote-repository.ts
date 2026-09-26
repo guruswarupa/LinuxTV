@@ -46,7 +46,23 @@ export type RepositoryState = {
 };
 
 export type PointerEventType = 'move' | 'tap' | 'click' | 'right_click' | 'scroll';
-export type SpecialKey = 'ENTER' | 'SPACE' | 'BACKSPACE' | 'ESCAPE' | 'TAB';
+export type SpecialKey =
+  | 'ENTER'
+  | 'SPACE'
+  | 'BACKSPACE'
+  | 'ESCAPE'
+  | 'TAB'
+  | 'DELETE'
+  | 'END'
+  | 'PAGE_UP'
+  | 'PAGE_DOWN'
+  | 'F5'
+  | 'A'
+  | 'C'
+  | 'V'
+  | 'X'
+  | 'Z';
+export type KeyModifier = 'ctrl' | 'alt' | 'shift';
 
 export interface RemoteRepository {
   connect(config?: Partial<ConnectionConfig>): Promise<void>;
@@ -55,7 +71,7 @@ export interface RemoteRepository {
   getDemoApps(): DemoApp[];
   sendAction(action: string): void;
   sendPointerEvent(event: PointerEventType, payload?: { dx?: number; dy?: number }): void;
-  sendSpecialKey(key: SpecialKey): void;
+  sendSpecialKey(key: SpecialKey, modifiers?: KeyModifier[]): void;
   sendText(text: string): void;
   sendSettingsRequest(type: string, payload?: Record<string, any>): void;
   addApp(app: { type: string; name: string; command?: string; url?: string }): void;
@@ -138,10 +154,11 @@ export class DemoRepository implements RemoteRepository {
     });
   }
 
-  sendSpecialKey(key: SpecialKey) {
+  sendSpecialKey(key: SpecialKey, modifiers?: KeyModifier[]) {
+    const label = modifiers?.length ? `${modifiers.join('+')}+${key}` : key;
     this.emit({
-      lastAction: `Key ${key}`,
-      lastMessage: `Demo key: ${key}`,
+      lastAction: `Key ${label}`,
+      lastMessage: `Demo key: ${label}`,
     });
   }
 
@@ -443,8 +460,9 @@ export class RealServerRepository implements RemoteRepository {
     );
   }
 
-  sendSpecialKey(key: SpecialKey) {
-    this.sendPayload({ type: 'key', key }, `Key ${key}`);
+  sendSpecialKey(key: SpecialKey, modifiers?: KeyModifier[]) {
+    const label = modifiers?.length ? `${modifiers.join('+')}+${key}` : key;
+    this.sendPayload({ type: 'key', key, ...(modifiers?.length ? { modifiers } : {}) }, `Key ${label}`);
   }
 
   sendText(text: string) {

@@ -30,9 +30,11 @@ import {
   DemoRepository,
   type AuthState,
   type ConnectionState,
+  type KeyModifier,
   RealServerRepository,
   type RemoteRepository,
   type RepositoryState,
+  type SpecialKey,
 } from '@/lib/remote-repository';
 
 const HOST_KEY = 'linuxtv_remote_host';
@@ -158,6 +160,7 @@ export default function RemoteScreen() {
   const [isSystemEditorVisible, setIsSystemEditorVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('remote');
   const [keyboardDraft, setKeyboardDraft] = useState('');
+  const [activeModifiers, setActiveModifiers] = useState<Set<KeyModifier>>(new Set());
   const [volumeLevel, setVolumeLevel] = useState(50);
   const [isMuted, setIsMuted] = useState(false);
   const [brightnessLevel, setBrightnessLevel] = useState(70);
@@ -871,8 +874,35 @@ export default function RemoteScreen() {
     setKeyboardDraft('');
   };
 
-  const sendSpecialKey = (key: 'ENTER' | 'SPACE' | 'BACKSPACE' | 'ESCAPE' | 'TAB') => {
-    repositoryRef.current?.sendSpecialKey(key);
+  const sendSpecialKey = (key: SpecialKey, modifiers?: KeyModifier[]) => {
+    repositoryRef.current?.sendSpecialKey(key, modifiers);
+  };
+
+  // Sticky modifiers: tap Ctrl/Alt/Shift to arm it, then tap any quick key --
+  // there's no way to hold two on-screen buttons at once like a real keyboard.
+  const toggleModifier = (mod: KeyModifier) => {
+    setActiveModifiers((current) => {
+      const next = new Set(current);
+      if (next.has(mod)) {
+        next.delete(mod);
+      } else {
+        next.add(mod);
+      }
+      return next;
+    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const sendQuickKey = (key: SpecialKey) => {
+    const modifiers = activeModifiers.size ? Array.from(activeModifiers) : undefined;
+    sendSpecialKey(key, modifiers);
+    setActiveModifiers(new Set());
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const sendShortcut = (key: SpecialKey) => {
+    sendSpecialKey(key, ['ctrl']);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
   const sendPointerEvent = (
@@ -1591,6 +1621,17 @@ export default function RemoteScreen() {
                     />
                   </View>
 
+                  {/* Bottom Actions including Mute */}
+                  <View style={styles.actionButtonsRow}>
+                    <ControlButton
+                      icon={isMuted ? "volume-mute" : "volume-high"}
+                      label={isMuted ? 'Unmute' : 'Mute'}
+                      onPress={toggleMute}
+                      style={[styles.actionButtonSmall, styles.muteButton]}
+                      textStyle={styles.muteButtonText}
+                    />
+                  </View>
+
                   {/* Macro Recording Controls */}
                   <View style={styles.actionButtonsRow}>
                     <ControlButton
@@ -1602,17 +1643,6 @@ export default function RemoteScreen() {
                       }}
                       style={[styles.actionButtonSmall, isRecording && styles.recordingButton]}
                       textStyle={isRecording ? styles.closeButtonTextSmall : styles.actionButtonText}
-                    />
-                  </View>
-
-                  {/* Bottom Actions including Mute */}
-                  <View style={styles.actionButtonsRow}>
-                    <ControlButton
-                      icon={isMuted ? "volume-mute" : "volume-high"}
-                      label={isMuted ? 'Unmute' : 'Mute'}
-                      onPress={toggleMute}
-                      style={[styles.actionButtonSmall, styles.muteButton]}
-                      textStyle={styles.muteButtonText}
                     />
                   </View>
                 </View>
@@ -1767,96 +1797,192 @@ export default function RemoteScreen() {
             )}
 
             {activeTab === 'keyboard' && (
-              <View style={styles.keyboardContainer}>
-                <View style={styles.keyboardInputWrapper}>
-                  <TextInput
-                    value={keyboardDraft}
-                    onChangeText={setKeyboardDraft}
-                    placeholder="Type text..."
-                    placeholderTextColor="#D8DEE9"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    multiline
-                    style={styles.keyboardInput}
-                  />
-                  <Pressable
-                    style={[styles.actionButton, styles.primaryButton, styles.sendButton]}
-                    onPress={() => {
-                      sendKeyboardText();
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    }}>
-                    <Ionicons name="paper-plane" size={20} color="#ECEFF4" />
-                    <Text style={styles.primaryButtonText}>Send</Text>
-                  </Pressable>
-                </View>
-                <View style={styles.keyboardSection}>
-                  <Text style={styles.groupLabel}>Quick Keys</Text>
-                  <View style={styles.specialKeysRow}>
-                    <ControlButton
-                      icon="checkmark-circle"
-                      label="Enter"
-                      onPress={() => {
-                        sendSpecialKey('ENTER');
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                      style={styles.keyButton}
-                      textStyle={styles.keyButtonText}
+              <ScrollView
+                style={styles.remoteScroll}
+                contentContainerStyle={styles.remoteScrollContent}
+                showsVerticalScrollIndicator={false}>
+                <View style={styles.keyboardContainer}>
+                  <View style={styles.keyboardInputWrapper}>
+                    <TextInput
+                      value={keyboardDraft}
+                      onChangeText={setKeyboardDraft}
+                      placeholder="Type text..."
+                      placeholderTextColor="#D8DEE9"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      multiline
+                      style={styles.keyboardInput}
                     />
-                    <ControlButton
-                      icon="ellipse-outline"
-                      label="Space"
+                    <Pressable
+                      style={[styles.actionButton, styles.primaryButton, styles.sendButton]}
                       onPress={() => {
-                        sendSpecialKey('SPACE');
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                      style={styles.keyButton}
-                      textStyle={styles.keyButtonText}
-                    />
-                    <ControlButton
-                      icon="backspace-outline"
-                      label="Backspace"
-                      onPress={() => {
-                        sendSpecialKey('BACKSPACE');
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                      style={styles.keyButton}
-                      textStyle={styles.keyButtonText}
-                    />
+                        sendKeyboardText();
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      }}>
+                      <Ionicons name="paper-plane" size={20} color="#ECEFF4" />
+                      <Text style={styles.primaryButtonText}>Send</Text>
+                    </Pressable>
                   </View>
-                  <View style={styles.specialKeysRow}>
-                    <ControlButton
-                      icon="close-circle"
-                      label="Esc"
-                      onPress={() => {
-                        sendSpecialKey('ESCAPE');
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                      style={styles.keyButton}
-                      textStyle={styles.keyButtonText}
-                    />
-                    <ControlButton
-                      icon="arrow-forward"
-                      label="Tab"
-                      onPress={() => {
-                        sendSpecialKey('TAB');
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                      style={styles.keyButton}
-                      textStyle={styles.keyButtonText}
-                    />
-                    <ControlButton
-                      icon="arrow-back"
-                      label="Shift+Tab"
-                      onPress={() => {
-                        sendAction('SHIFT_TAB');
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                      style={styles.keyButton}
-                      textStyle={styles.keyButtonText}
-                    />
+
+                  <View style={styles.keyboardSection}>
+                    <Text style={styles.groupLabel}>Modifiers · hold for next key</Text>
+                    <View style={styles.specialKeysRow}>
+                      {(['ctrl', 'alt', 'shift'] as KeyModifier[]).map((mod) => {
+                        const active = activeModifiers.has(mod);
+                        return (
+                          <Pressable
+                            key={mod}
+                            style={({ pressed }) => [
+                              styles.keyButton,
+                              active && styles.modifierButtonActive,
+                              pressed && styles.pressed,
+                            ]}
+                            onPress={() => toggleModifier(mod)}>
+                            <Text style={[styles.keyButtonText, active && styles.modifierButtonTextActive]}>
+                              {mod === 'ctrl' ? 'Ctrl' : mod === 'alt' ? 'Alt' : 'Shift'}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <View style={styles.keyboardSection}>
+                    <Text style={styles.groupLabel}>Quick Keys</Text>
+                    <View style={styles.specialKeysRow}>
+                      <ControlButton
+                        icon="checkmark-circle"
+                        label="Enter"
+                        onPress={() => sendQuickKey('ENTER')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                      <ControlButton
+                        icon="ellipse-outline"
+                        label="Space"
+                        onPress={() => sendQuickKey('SPACE')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                      <ControlButton
+                        icon="backspace-outline"
+                        label="Backspace"
+                        onPress={() => sendQuickKey('BACKSPACE')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                    </View>
+                    <View style={styles.specialKeysRow}>
+                      <ControlButton
+                        icon="close-circle"
+                        label="Esc"
+                        onPress={() => sendQuickKey('ESCAPE')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                      <ControlButton
+                        icon="arrow-forward"
+                        label="Tab"
+                        onPress={() => sendQuickKey('TAB')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                      <ControlButton
+                        icon="arrow-back"
+                        label="Shift+Tab"
+                        onPress={() => {
+                          sendAction('SHIFT_TAB');
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                    </View>
+                    <View style={styles.specialKeysRow}>
+                      <ControlButton
+                        icon="trash-outline"
+                        label="Delete"
+                        onPress={() => sendQuickKey('DELETE')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                      <ControlButton
+                        icon="arrow-forward-circle-outline"
+                        label="End"
+                        onPress={() => sendQuickKey('END')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                      <ControlButton
+                        icon="refresh-outline"
+                        label="Refresh"
+                        onPress={() => sendQuickKey('F5')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                    </View>
+                    <View style={styles.specialKeysRow}>
+                      <ControlButton
+                        icon="arrow-up-circle-outline"
+                        label="Page Up"
+                        onPress={() => sendQuickKey('PAGE_UP')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                      <ControlButton
+                        icon="arrow-down-circle-outline"
+                        label="Page Down"
+                        onPress={() => sendQuickKey('PAGE_DOWN')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.keyboardSection}>
+                    <Text style={styles.groupLabel}>Shortcuts</Text>
+                    <View style={styles.specialKeysRow}>
+                      <ControlButton
+                        icon="copy-outline"
+                        label="Copy"
+                        onPress={() => sendShortcut('C')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                      <ControlButton
+                        icon="clipboard-outline"
+                        label="Paste"
+                        onPress={() => sendShortcut('V')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                      <ControlButton
+                        icon="cut-outline"
+                        label="Cut"
+                        onPress={() => sendShortcut('X')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                    </View>
+                    <View style={styles.specialKeysRow}>
+                      <ControlButton
+                        icon="checkbox-outline"
+                        label="Select All"
+                        onPress={() => sendShortcut('A')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                      <ControlButton
+                        icon="arrow-undo-outline"
+                        label="Undo"
+                        onPress={() => sendShortcut('Z')}
+                        style={styles.keyButton}
+                        textStyle={styles.keyButtonText}
+                      />
+                    </View>
                   </View>
                 </View>
-              </View>
+              </ScrollView>
             )}
 
             {activeTab === 'macros' && (
@@ -3586,7 +3712,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   keyboardContainer: {
-    flex: 1,
     gap: 16,
   },
   keyboardInputWrapper: {
@@ -3631,6 +3756,13 @@ const styles = StyleSheet.create({
     color: '#D8DEE9',
     fontSize: 13,
     fontWeight: '600',
+  },
+  modifierButtonActive: {
+    backgroundColor: 'rgba(136, 192, 208, 0.22)',
+    borderColor: '#88C0D0',
+  },
+  modifierButtonTextActive: {
+    color: '#88C0D0',
   },
   touchpadContainer: {
     flex: 1,
