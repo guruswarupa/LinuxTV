@@ -7,7 +7,7 @@ LinuxTV is a fullscreen, remote-friendly launcher for home media setups (10-foot
 > This README is inside `linuxtvdesktop/` and documents the desktop launcher configuration, systemd service setup, and boot flow.
 
 
-- Full-screen GUI via PySide6
+- Full-screen, Android-TV-style home screen (PySide6/PyQt5 hosting a Qt Quick UI)
 - Config-driven web apps (`config.yaml`)
 - Native app detection + hide-unavailable behavior
 - Kiosk web app launch via chromium/firefox
@@ -17,7 +17,8 @@ LinuxTV is a fullscreen, remote-friendly launcher for home media setups (10-foot
 
 ## Files
 
-- `launcher.py`: main PySide6 launcher app
+- `launcher.py`: main launcher app — window/process management, config, remote control, and the `HomeBackend` view-model exposed to the QML UI
+- `qml/`: the home screen UI (Qt Quick) — `Home.qml` is the root; `AppCard`/`AppRow` render the rows of tiles, `TopBar`/`SettingsPanel`/`ContextMenu`/`Toast`/`LaunchSplash`/`AmbientBackground` are the surrounding chrome
 - `config.yaml`: sample config with `native_apps` + `web_apps`
 - `linuxtv.service`: example systemd unit
 - `setup.sh`: install dependencies + instructions message
@@ -37,18 +38,22 @@ LinuxTV is a fullscreen, remote-friendly launcher for home media setups (10-foot
   - `url`: URL to launch
   - `icon`: optional icon path
 
+- `ui` (optional):
+  - `reduced_effects`: `"auto"` (default), `"true"`, or `"false"` — turns off the focus zoom/glow and ambient backdrop image on weak GPUs. Can also be toggled live from the in-app Settings panel, which persists the choice back to this file.
+
 ---
 
-## Python app behavior
+## The home screen
 
-1. Load `~/ .config/linuxtv/config.yaml` or `./config.yaml` fallback.
-2. Detect installed native apps (via `which`).
-3. Show available app tiles in fullscreen.
-4. Keyboard navigation:
-   - Arrow keys: move
-   - Enter/Space: launch
-   - Esc: close launcher
-5. On app exit, return to launcher.
+- Rows of tiles (Favorites, Apps, Streaming, any custom categories from `categories` in `config.yaml`), each tile tinted by its icon's dominant color with the name fading in on focus.
+- Search: press Up from the top row, or click the search pill in the top bar.
+- Long-press Enter, the remote's Menu action, or right-click a tile for its context menu (favorite, reorder, edit, remove).
+- The gear icon in the top-right opens the Settings panel (network, Bluetooth, sound, brightness, remote-login, auto-open, updates, restart/shutdown, reduced-effects toggle) — this replaces the old row of colored icon buttons.
+- Keyboard navigation:
+  - Arrow keys: move
+  - Enter/Space: launch
+  - Esc: back out of an overlay, or close the launcher (with confirmation) from the home screen
+- On app exit, focus returns to the tile that was launched.
 
 ---
 

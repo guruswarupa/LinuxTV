@@ -31,7 +31,7 @@ fi
 # Step 1: Install system dependencies
 echo "[1/8] Installing system dependencies..."
 sudo apt update
-sudo apt install -y python3 python3-pip python3-venv python3-pyqt5 python3-pyqt5.qtwebengine chromium xinit xserver-xorg xauth x11-xserver-utils libxcb-cursor0 pulseaudio-utils pipewire pipewire-pulse wireplumber dbus-user-session wmctrl xdotool openbox network-manager polkitd pkexec git curl ca-certificates gnupg
+sudo apt install -y python3 python3-pip python3-venv python3-pyqt5 python3-pyqt5.qtwebengine python3-pyqt5.qtquick qml-module-qtquick2 qml-module-qtquick-window2 fonts-noto-core chromium xinit xserver-xorg xauth x11-xserver-utils libxcb-cursor0 pulseaudio-utils pipewire pipewire-pulse wireplumber dbus-user-session wmctrl xdotool openbox network-manager polkitd pkexec git curl ca-certificates gnupg
 
 echo "Installing Brave browser..."
 if curl -fsS https://dl.brave.com/install.sh | sudo sh; then

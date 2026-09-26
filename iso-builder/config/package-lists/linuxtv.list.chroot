@@ -19,6 +19,7 @@ libxcb-cursor0
 fonts-dejavu-core
 fonts-symbola
 fonts-noto-color-emoji
+fonts-noto-core
 
 # Python and Qt
 python3
@@ -26,6 +27,9 @@ python3-pip
 python3-venv
 python3-pyqt5
 python3-pyqt5.qtwebengine
+python3-pyqt5.qtquick
+qml-module-qtquick2
+qml-module-qtquick-window2
 python3-yaml
 python3-websockets
 python3-evdev
