@@ -170,6 +170,21 @@ create missing parent directories).
   `debootstrap`). Standard, well-documented requirement for debootstrapping
   Debian from a non-Debian host, not a version-staleness bug like the ones
   above.
+- Not a CI/live-build issue at all: `iso-builder/config/includes.chroot/usr/local/bin/set-hdmi-audio.sh`
+  never actually existed in the repo (only its systemd unit did), so
+  `0100-setup-linuxtv.hook.chroot`'s `chmod +x` on it always failed
+  (`chmod: cannot access '/usr/local/bin/set-hdmi-audio.sh'`, exit
+  non-zero, `lb_chroot_hooks`). `linuxtvdesktop/launcher.py` separately
+  deprecated *re-forcing* HDMI audio on every app launch ("Respect user's
+  default audio device - don't force HDMI"), which first looked like this
+  whole thing was abandoned leftover wiring -- but the one-shot
+  `set-hdmi-audio.service` (`graphical.target`, runs once at boot) is a
+  different, still-wanted case: default to the TV's speakers when LinuxTV
+  boots connected over HDMI, without fighting a user who's since picked a
+  different output. Wrote the missing script (mirrors the same sink-lookup
+  `switch_audio_to_hdmi()` already does in `launcher.py`: find a sink whose
+  name contains "hdmi", `pactl set-default-sink` it, move active
+  sink-inputs over) rather than deleting the feature.
 - The Android workflow downloads a fresh Android SDK cmdline-tools build
   itself rather than relying on `android-actions/setup-android@v3` (fails
   trying to touch the removed legacy `tools` package) or whatever SDK
