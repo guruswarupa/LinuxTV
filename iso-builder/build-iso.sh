@@ -11,22 +11,25 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-if ! command -v lb >/dev/null 2>&1; then
-  apt-get update
-  apt-get install -y live-build rsync
-elif ! command -v rsync >/dev/null 2>&1; then
-  apt-get update
-  apt-get install -y rsync
-fi
+apt-get update
+apt-get install -y rsync isolinux cpio debootstrap
 
-# live-build's own binary_syslinux stage auto-installs syslinux/mtools/etc.
-# as it goes, but not isolinux -- a separate package providing the El Torito
-# CD-boot loader that --binary-images iso-hybrid actually needs
-# (/usr/lib/ISOLINUX/isolinux.bin). Install it upfront rather than relying
-# on live-build to pull it in itself.
-if ! dpkg -s isolinux >/dev/null 2>&1; then
-  apt-get update
-  apt-get install -y isolinux
+# The live-build in Ubuntu's own apt repos is ancient (3.0~a57, a pre-2016
+# version-numbering scheme) and has accumulated a long list of mismatches
+# against Debian trixie's current archive layout: wrong suite naming for
+# the security archive, the old flat Contents-<arch>.gz path for firmware
+# auto-detection, a syslinux theme path syslinux-common doesn't ship at
+# that location anymore, sysvinit as its default init system, and a
+# ubuntu/amd64 self-reported mode instead of debian. Rather than keep
+# patching individual staleness bugs one at a time, just install Debian
+# trixie's own current live-build directly -- it's arch-independent, has
+# minimal deps (cpio, debootstrap, both installed above), and is built
+# against exactly the archive layout we're actually building against.
+if ! dpkg-query -W -f='${Version}' live-build 2>/dev/null | grep -q '^1:20250505'; then
+  LIVE_BUILD_DEB="$(mktemp -d)/live-build.deb"
+  curl -fsSL -o "$LIVE_BUILD_DEB" \
+    "https://ftp.debian.org/debian/pool/main/l/live-build/live-build_20250505+deb13u1_all.deb"
+  dpkg -i "$LIVE_BUILD_DEB" || apt-get install -yf
 fi
 
 # Clean up previous build - properly unmount chroot filesystems first
@@ -88,8 +91,7 @@ lb config \
   --mirror-chroot http://deb.debian.org/debian/ \
   --mirror-binary http://deb.debian.org/debian/ \
   --security false \
-  --firmware-chroot false \
-  --syslinux-theme live-build
+  --firmware-chroot false
 
 lb build 2>&1 | tee "$OUTPUT_LOG"
 
