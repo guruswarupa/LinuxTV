@@ -1,22 +1,29 @@
 # CI/CD setup
 
-Both workflows here are manual-only (`workflow_dispatch`) — trigger them from the
-**Actions** tab, they never run on push or PR. Each checks that its required
-secrets/variables exist before doing any real work, so a missing secret fails
-in seconds instead of after an hour-long ISO build.
+All three workflows here are manual-only (`workflow_dispatch`) — trigger them
+from the **Actions** tab, they never run on push or PR. Each checks that its
+required secrets/variables exist before doing any real work, so a missing
+secret fails in seconds instead of after an hour-long ISO build.
+
+Every download-facing filename is fixed (`LinuxTV.iso`, `LinuxTVRemote.apk`,
+`linuxtv-flash-tool.py`, etc.) — not versioned/timestamped — because both
+SourceForge and the GitHub release below are meant to always offer the
+current build at the same stable URL, the same way the SourceForge
+`release/` folder already worked before any of this CI existed.
 
 ## `build-publish-iso.yml`
 
 Builds `iso-builder/LinuxTV.iso` via `sudo ./build-iso.sh` (live-build, ~30-90
-min) and, if `publish` is left checked, uploads it to SourceForge over rsync/SSH.
-The ISO is also attached to the workflow run as a downloadable artifact either way.
+min), attaches it to the workflow run as a downloadable artifact, and
+optionally uploads it to SourceForge and/or the GitHub release (see below).
 
 ## `build-publish-android.yml`
 
 Builds `linuxtvremote`'s release `.aab` and `.apk` (signed with your release
-keystore), attaches both as workflow artifacts, and optionally:
-- uploads the `.apk` to SourceForge
-- publishes the `.aab` to Google Play via the Play Developer API
+keystore), renames the APK to `LinuxTVRemote.apk`, attaches both as workflow
+artifacts, and optionally:
+- uploads the APK to SourceForge and/or the GitHub release
+- publishes the AAB to Google Play via the Play Developer API
 
 The Play Store step only works because this app already has a listing with at
 least one manually-uploaded release — Google requires that first upload to go
@@ -33,12 +40,33 @@ no need to remember to bump it by hand before clicking "Run workflow".
 `versionName` isn't touched automatically; bump that yourself in
 `build.gradle` when it's actually a meaningfully different release.
 
+## `build-publish-flash-tools.yml`
+
+`iso-builder/linuxtv-flash-tool.py`, `flash-tool-windows.bat`,
+`flash-tool-linux.sh`, `flash-tool-macos.sh`, and `USB-GUIDE.md` are plain
+scripts, not something that gets compiled — this workflow just packages
+whatever's currently committed and publishes it to SourceForge and/or the
+GitHub release, same as the other two.
+
+## GitHub Releases: the "latest" release
+
+All three workflows, when their `publish_github_release` input is left
+checked, upload to a single persistent release tagged `latest` (created on
+first use if it doesn't exist yet), using `gh release upload --clobber` to
+overwrite the previous file of the same name. This mirrors the SourceForge
+`release/` folder: one standing set of current-build downloads at a stable
+URL, not a new GitHub release (and a new tag to manage) on every manual
+dispatch. Uses the automatic `GITHUB_TOKEN` (via `permissions: contents:
+write` on each job) — no extra secret needed. GitHub Releases caps
+individual assets at 2GB; `LinuxTV.iso` is currently ~1.7GB, comfortably
+under that for now.
+
 ## Secrets to add (repo Settings → Secrets and variables → Actions → Secrets)
 
 | Secret | Used by | What it is |
 |---|---|---|
-| `SOURCEFORGE_SSH_KEY` | both | Private half of an SSH key added to your SourceForge account (Account → SSH Keys). Paste the whole `-----BEGIN ... KEY-----` block. |
-| `SOURCEFORGE_USER` | both | Your SourceForge username (not email). |
+| `SOURCEFORGE_SSH_KEY` | all three | Private half of an SSH key added to your SourceForge account (Account → SSH Keys). Paste the whole `-----BEGIN ... KEY-----` block. |
+| `SOURCEFORGE_USER` | all three | Your SourceForge username (not email). |
 | `ANDROID_KEYSTORE_BASE64` | android | Your release `keystore.jks`, base64-encoded: `base64 -w0 keystore.jks` (macOS: `base64 -i keystore.jks`). Paste the output. |
 | `ANDROID_KEYSTORE_PASSWORD` | android | The keystore's store password. |
 | `ANDROID_KEY_ALIAS` | android | The key alias inside the keystore. |
@@ -49,13 +77,13 @@ no need to remember to bump it by hand before clicking "Run workflow".
 
 | Variable | Used by | What it is |
 |---|---|---|
-| `SOURCEFORGE_PROJECT` | both | Your SourceForge project slug — the `<slug>` in `sourceforge.net/projects/<slug>`. Not secret, just project-specific, so it's a variable rather than a secret. |
+| `SOURCEFORGE_PROJECT` | all three | Your SourceForge project slug — the `<slug>` in `sourceforge.net/projects/<slug>`. Not secret, just project-specific, so it's a variable rather than a secret. |
 
-Uploads land in `/home/frs/project/<SOURCEFORGE_PROJECT>/release/desktop-iso/`
-and `/home/frs/project/<SOURCEFORGE_PROJECT>/release/android-apk/` on
-SourceForge — both already exist. If you ever recreate the project, make
-those two folders once via the SourceForge file manager first (rsync won't
-create missing parent directories).
+Everything uploads flat into `/home/frs/project/<SOURCEFORGE_PROJECT>/release/`
+on SourceForge — one shared folder for the ISO, the APK, and the flash tool
+files, not separate subfolders per artifact type. That folder already
+exists. If you ever recreate the project, make it once via the SourceForge
+file manager first (rsync won't create missing parent directories).
 
 ## Notes / things I couldn't verify from here
 

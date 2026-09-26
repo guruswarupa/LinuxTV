@@ -9,6 +9,10 @@ on:
         description: "Upload the release APK to SourceForge"
         type: boolean
         default: true
+      publish_github_release:
+        description: "Upload the release APK to the GitHub 'latest' release"
+        type: boolean
+        default: true
       publish_playstore:
         description: "Publish the release AAB to Google Play"
         type: boolean
@@ -130,13 +134,20 @@ jobs:
         if: always()
         run: rm -f linuxtvremote/android/app/keystore.jks
 
+      # Both SourceForge and GitHub Releases are meant to always offer the
+      # same fixed download name, not a versioned build filename.
+      - name: Rename APK for release
+        run: |
+          cp linuxtvremote/android/app/build/outputs/apk/release/app-release.apk \
+             linuxtvremote/android/app/build/outputs/apk/release/LinuxTVRemote.apk
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linuxtvremote-release
           path: |
             linuxtvremote/android/app/build/outputs/bundle/release/*.aab
-            linuxtvremote/android/app/build/outputs/apk/release/*.apk
+            linuxtvremote/android/app/build/outputs/apk/release/LinuxTVRemote.apk
           retention-days: 30
 
       - name: Publish APK to SourceForge
@@ -151,8 +162,22 @@ jobs:
           chmod 600 ~/.ssh/sourceforge_key
           ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts 2>/dev/null
           rsync -avP -e "ssh -i ~/.ssh/sourceforge_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
-            linuxtvremote/android/app/build/outputs/apk/release/app-release.apk \
-            "${SOURCEFORGE_USER}@frs.sourceforge.net:/home/frs/project/${SOURCEFORGE_PROJECT}/release/android-apk/"
+            linuxtvremote/android/app/build/outputs/apk/release/LinuxTVRemote.apk \
+            "${SOURCEFORGE_USER}@frs.sourceforge.net:/home/frs/project/${SOURCEFORGE_PROJECT}/release/"
+
+      # Keeps one persistent "latest" release as the standing download point,
+      # same idea as the SourceForge release/ folder -- not a fresh
+      # numbered release on every manual dispatch.
+      - name: Publish APK to GitHub Release
+        if: ${{ inputs.publish_github_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view latest --repo "${{ github.repository }}" >/dev/null 2>&1 || \
+            gh release create latest --repo "${{ github.repository }}" \
+              --title "Latest build" --notes "Automatically updated by CI. Not a tagged version release."
+          gh release upload latest --repo "${{ github.repository }}" --clobber \
+            linuxtvremote/android/app/build/outputs/apk/release/LinuxTVRemote.apk
 
       # First-ever Play Store release for an app can only be uploaded by hand
       # through the Play Console -- the Publishing API only works once a

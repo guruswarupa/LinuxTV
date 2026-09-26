@@ -1,58 +1,56 @@
-name: Build & Publish ISO
+name: Publish Flash Tools
 
-# Manual only: a full live-build ISO run can take 30-90+ minutes, so this
-# never fires automatically on push/PR -- only from the Actions tab.
+# Manual only, same as the other two. These files are plain scripts (no
+# actual build/compile step), so this just packages and publishes whatever
+# is currently committed under iso-builder/.
 on:
   workflow_dispatch:
     inputs:
-      publish:
-        description: "Upload the built ISO to SourceForge"
+      publish_sourceforge:
+        description: "Upload the flash tool files to SourceForge"
         type: boolean
         default: true
       publish_github_release:
-        description: "Upload the built ISO to the GitHub 'latest' release"
+        description: "Upload the flash tool files to the GitHub 'latest' release"
         type: boolean
         default: true
 
 jobs:
-  build-iso:
+  publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
       - name: Check required secrets are set
-        if: ${{ inputs.publish }}
+        if: ${{ inputs.publish_sourceforge }}
         run: |
           missing=()
           [ -z "${{ secrets.SOURCEFORGE_SSH_KEY }}" ] && missing+=("SOURCEFORGE_SSH_KEY (secret)")
           [ -z "${{ secrets.SOURCEFORGE_USER }}" ] && missing+=("SOURCEFORGE_USER (secret)")
           [ -z "${{ vars.SOURCEFORGE_PROJECT }}" ] && missing+=("SOURCEFORGE_PROJECT (repo variable)")
           if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::Missing SourceForge config before spending an hour building: ${missing[*]}. See .github/workflows/README.md."
+            echo "::error::Missing SourceForge config: ${missing[*]}. See .github/workflows/README.md."
             exit 1
           fi
 
       - uses: actions/checkout@v4
 
-      - name: Free up runner disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /opt/az
-          sudo docker image prune -a -f || true
-
-      - name: Build ISO
-        working-directory: iso-builder
-        run: sudo ./build-iso.sh
-
-      - name: Upload ISO as a workflow artifact
+      - name: Upload as a workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LinuxTV-iso
-          path: iso-builder/LinuxTV.iso
-          retention-days: 14
+          name: linuxtv-flash-tools
+          path: |
+            iso-builder/linuxtv-flash-tool.py
+            iso-builder/flash-tool-windows.bat
+            iso-builder/flash-tool-linux.sh
+            iso-builder/flash-tool-macos.sh
+            iso-builder/USB-GUIDE.md
+          retention-days: 30
 
+      # Same release/ folder as the ISO and APK -- not a separate subfolder.
       - name: Publish to SourceForge
-        if: ${{ inputs.publish }}
+        if: ${{ inputs.publish_sourceforge }}
         env:
           SOURCEFORGE_SSH_KEY: ${{ secrets.SOURCEFORGE_SSH_KEY }}
           SOURCEFORGE_USER: ${{ secrets.SOURCEFORGE_USER }}
@@ -63,14 +61,15 @@ jobs:
           chmod 600 ~/.ssh/sourceforge_key
           ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts 2>/dev/null
           rsync -avP -e "ssh -i ~/.ssh/sourceforge_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
-            iso-builder/LinuxTV.iso \
+            iso-builder/linuxtv-flash-tool.py \
+            iso-builder/flash-tool-windows.bat \
+            iso-builder/flash-tool-linux.sh \
+            iso-builder/flash-tool-macos.sh \
+            iso-builder/USB-GUIDE.md \
             "${SOURCEFORGE_USER}@frs.sourceforge.net:/home/frs/project/${SOURCEFORGE_PROJECT}/release/"
 
-      # Keeps one persistent "latest" release as the standing download point,
-      # same idea as the SourceForge release/ folder -- not a fresh numbered
-      # release on every manual dispatch. GitHub Releases caps individual
-      # assets at 2GB; LinuxTV.iso is currently well under that.
-      - name: Publish ISO to GitHub Release
+      # Same persistent "latest" release the ISO/APK workflows update.
+      - name: Publish to GitHub Release
         if: ${{ inputs.publish_github_release }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -79,4 +78,8 @@ jobs:
             gh release create latest --repo "${{ github.repository }}" \
               --title "Latest build" --notes "Automatically updated by CI. Not a tagged version release."
           gh release upload latest --repo "${{ github.repository }}" --clobber \
-            iso-builder/LinuxTV.iso
+            iso-builder/linuxtv-flash-tool.py \
+            iso-builder/flash-tool-windows.bat \
+            iso-builder/flash-tool-linux.sh \
+            iso-builder/flash-tool-macos.sh \
+            iso-builder/USB-GUIDE.md
