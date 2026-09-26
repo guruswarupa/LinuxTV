@@ -60,12 +60,18 @@ jobs:
       # android-actions/setup-android@v3 fails here: it tries to touch the
       # legacy "tools" package, which no longer exists in the SDK repository
       # ("Warning: Failed to find package 'tools'", exit 1). ubuntu-latest
-      # already ships an Android SDK with a working sdkmanager on PATH, so
-      # just ask it for exactly what this Expo 54 project needs instead.
+      # ships an Android SDK on disk (that's how the old action's sdkmanager
+      # call even got that far), but its cmdline-tools bin/ isn't on PATH in
+      # a plain run: step -- only the action itself added it there. Find the
+      # actual sdkmanager binary and call it directly for exactly what this
+      # Expo 54 project needs.
       - name: Ensure required Android SDK packages
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006"
+          SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          SDKMANAGER="$(command -v sdkmanager || find "$SDK_ROOT/cmdline-tools" -maxdepth 2 -name sdkmanager | sort -V | tail -1)"
+          echo "Using sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006"
 
       - name: Install JS dependencies
         working-directory: linuxtvremote
