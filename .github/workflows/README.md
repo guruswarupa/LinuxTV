@@ -68,9 +68,11 @@ those two folders once via the SourceForge file manager before the first run
   instead of the real Debian package `linux-image-amd64`
   (`E: Unable to locate package linux-amd64`, exit 123 at the
   `lb_chroot_install-packages` stage).
-- The Android workflow installs SDK packages by calling `sdkmanager` directly
-  (`android-actions/setup-android@v3` fails on ubuntu-latest trying to touch
-  the removed legacy `tools` package) with `platforms;android-35`,
+- The Android workflow downloads a fresh Android SDK cmdline-tools build
+  itself rather than relying on `android-actions/setup-android@v3` (fails
+  trying to touch the removed legacy `tools` package) or whatever SDK
+  happens to be preinstalled on the runner image (its presence/path proved
+  inconsistent across a few attempts). It then installs `platforms;android-35`,
   `build-tools;35.0.0` and `ndk;27.1.12297006` — the current defaults baked
   into `expo-root-project`'s Gradle plugin (see
   `node_modules/expo-modules-autolinking/android/expo-gradle-plugin/expo-autolinking-plugin/src/main/kotlin/expo/modules/plugin/ExpoRootProjectPlugin.kt`).

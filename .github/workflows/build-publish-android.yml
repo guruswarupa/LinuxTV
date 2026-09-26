@@ -57,33 +57,31 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # android-actions/setup-android@v3 fails here: it tries to touch the
-      # legacy "tools" package, which no longer exists in the SDK repository
-      # ("Warning: Failed to find package 'tools'", exit 1). ubuntu-latest
-      # ships an Android SDK on disk (that's how the old action's sdkmanager
-      # call even got that far), but its cmdline-tools bin/ isn't on PATH in
-      # a plain run: step -- only the action itself added it there. Find the
-      # actual sdkmanager binary and call it directly for exactly what this
-      # Expo 54 project needs.
-      - name: Ensure required Android SDK packages
+      # android-actions/setup-android@v3 fails here (tries to touch the
+      # removed legacy "tools" package), and relying on whatever Android SDK
+      # happens to be preinstalled on the runner image proved unreliable
+      # across a few attempts -- its presence and path aren't something this
+      # workflow should depend on. Install a known-good cmdline-tools build
+      # fresh instead, so this step doesn't depend on the runner image at all.
+      # If this download 404s in the future, get a current build number from
+      # https://developer.android.com/studio#command-line-tools-only.
+      - name: Install Android SDK cmdline-tools
         run: |
-          # ANDROID_SDK_ROOT/ANDROID_HOME aren't reliably set on this runner
-          # image outside of actions that explicitly export them, so fall
-          # back to the known on-disk location (confirmed from a prior run's
-          # log: /usr/local/lib/android/sdk/cmdline-tools/16.0/bin/sdkmanager)
-          # and search broadly rather than assuming a version directory name.
-          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
-          SDKMANAGER="$(command -v sdkmanager 2>/dev/null || true)"
-          if [ -z "$SDKMANAGER" ]; then
-            SDKMANAGER="$(find "$SDK_ROOT" -maxdepth 3 -type f -name sdkmanager 2>/dev/null | sort -V | tail -1)"
-          fi
-          if [ -z "$SDKMANAGER" ]; then
-            echo "::error::Could not locate sdkmanager under $SDK_ROOT"
-            exit 1
-          fi
-          echo "Using sdkmanager: $SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses > /dev/null || true
-          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006"
+          SDK_ROOT="$HOME/android-sdk"
+          mkdir -p "$SDK_ROOT/cmdline-tools"
+          curl -sSL -o /tmp/cmdline-tools.zip \
+            https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q /tmp/cmdline-tools.zip -d "$SDK_ROOT/cmdline-tools"
+          mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Install required Android SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006"
 
       - name: Install JS dependencies
         working-directory: linuxtvremote
