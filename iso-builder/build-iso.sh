@@ -64,6 +64,7 @@ lb config \
   --mode debian \
   --architectures amd64 \
   --distribution trixie \
+  --distribution-security trixie-security \
   --archive-areas "main contrib non-free non-free-firmware" \
   --binary-images iso-hybrid \
   --iso-application "LinuxTV" \

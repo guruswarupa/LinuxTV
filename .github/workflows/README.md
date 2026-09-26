@@ -74,6 +74,13 @@ those two folders once via the SourceForge file manager before the first run
   runner pulled in Ubuntu's live-session package `casper` instead of
   Debian's equivalent -- `casper` doesn't exist in Debian's repos at all
   (`E: Unable to locate package casper`, exit 100 at `lb_chroot_live-packages`).
+- `build-iso.sh` also now passes `--distribution-security trixie-security`.
+  This live-build version still constructs the pre-bookworm security suite
+  name (`trixie/updates`) instead of the naming Debian switched to for
+  bookworm onward (`trixie-security`), which 404s
+  (`security.debian.org/debian-security trixie/updates Release`, exit 100).
+  `--distribution-security` overrides the auto-derived suite name directly
+  rather than relying on live-build to compute it correctly.
 - The Android workflow downloads a fresh Android SDK cmdline-tools build
   itself rather than relying on `android-actions/setup-android@v3` (fails
   trying to touch the removed legacy `tools` package) or whatever SDK
