@@ -24,6 +24,15 @@ through the Play Console UI by hand; the API can't create a listing from
 scratch. Since a bad `production` push is hard to take back, `play_track`
 defaults to `internal` — pick `production` deliberately when you mean it.
 
+Before building, the workflow bumps `versionCode` in
+`android/app/build.gradle` by 1 and commits+pushes that straight to whatever
+branch triggered the run (needs `permissions: contents: write`, already set
+on the job). Play rejects a re-used `versionCode` even from a run that never
+actually got uploaded, so this happens unconditionally on every dispatch —
+no need to remember to bump it by hand before clicking "Run workflow".
+`versionName` isn't touched automatically; bump that yourself in
+`build.gradle` when it's actually a meaningfully different release.
+
 ## Secrets to add (repo Settings → Secrets and variables → Actions → Secrets)
 
 | Secret | Used by | What it is |
@@ -74,13 +83,25 @@ those two folders once via the SourceForge file manager before the first run
   runner pulled in Ubuntu's live-session package `casper` instead of
   Debian's equivalent -- `casper` doesn't exist in Debian's repos at all
   (`E: Unable to locate package casper`, exit 100 at `lb_chroot_live-packages`).
-- `build-iso.sh` also now passes `--distribution-security trixie-security`.
-  This live-build version still constructs the pre-bookworm security suite
-  name (`trixie/updates`) instead of the naming Debian switched to for
-  bookworm onward (`trixie-security`), which 404s
-  (`security.debian.org/debian-security trixie/updates Release`, exit 100).
-  `--distribution-security` overrides the auto-derived suite name directly
-  rather than relying on live-build to compute it correctly.
+- `build-iso.sh` now passes `--security false`, disabling the security
+  archive outright, because this exact packaged live-build version
+  (`3.0~a57-1ubuntu49[.1]`) has no way to fix its suite naming for trixie.
+  Traced this one by downloading and reading the actual shipped
+  `/usr/lib/live/build/lb_chroot_archives` script (there's no
+  `--distribution-security` flag in this version at all, confirmed via
+  `/usr/lib/live/build/lb_config`'s own `--help` text): in `lb_config`
+  mode, whenever the (unset, defaults-to-same-as-`--distribution`) *parent*
+  distribution isn't `sid`, it unconditionally emits
+  `<security-mirror> <parent-distribution>/updates` for the security
+  source — the pre-bookworm suite name — with no way to override it short
+  of patching the installed script. `--mirror-*-security` alone can't fix
+  it (`security.debian.org/debian-security trixie/updates Release` 404s,
+  exit 100 at `lb_chroot_archives`), so the archive is disabled instead.
+  Tradeoff: the shipped ISO's own `/etc/apt/sources.list` also won't have a
+  security line, so `apt upgrade` on a running install won't pull security
+  updates until one is added by hand (`deb http://security.debian.org/debian-security trixie-security main contrib non-free non-free-firmware`)
+  or via a `config/hooks/live/` postinst hook — worth doing at some point,
+  just not part of unblocking this CI failure.
 - The Android workflow downloads a fresh Android SDK cmdline-tools build
   itself rather than relying on `android-actions/setup-android@v3` (fails
   trying to touch the removed legacy `tools` package) or whatever SDK
@@ -91,3 +112,10 @@ those two folders once via the SourceForge file manager before the first run
   `node_modules/expo-modules-autolinking/android/expo-gradle-plugin/expo-autolinking-plugin/src/main/kotlin/expo/modules/plugin/ExpoRootProjectPlugin.kt`).
   If you bump the `expo` package to a new SDK version, check that file for
   new defaults and update these three strings to match.
+- Both SourceForge publish steps (ISO and Android) now pass `-o
+  IdentitiesOnly=yes` to `ssh` alongside `-i ~/.ssh/sourceforge_key`. Without
+  it, `ssh` still offers its other default identities before the one you
+  gave it explicitly, and if the server's `MaxAuthTries` gets hit first, it
+  disconnects everyone (`Too many authentication failures`, exit 255) even
+  though the right key would have worked. `IdentitiesOnly=yes` forces `ssh`
+  to offer only the key that was actually specified.

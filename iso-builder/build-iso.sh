@@ -64,7 +64,6 @@ lb config \
   --mode debian \
   --architectures amd64 \
   --distribution trixie \
-  --distribution-security trixie-security \
   --archive-areas "main contrib non-free non-free-firmware" \
   --binary-images iso-hybrid \
   --iso-application "LinuxTV" \
@@ -76,9 +75,8 @@ lb config \
   --debian-installer-gui false \
   --mirror-bootstrap http://deb.debian.org/debian/ \
   --mirror-chroot http://deb.debian.org/debian/ \
-  --mirror-chroot-security http://security.debian.org/debian-security/ \
   --mirror-binary http://deb.debian.org/debian/ \
-  --mirror-binary-security http://security.debian.org/debian-security/
+  --security false
 
 lb build 2>&1 | tee "$OUTPUT_LOG"
 

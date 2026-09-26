@@ -23,6 +23,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: write
     steps:
       - name: Check required secrets are set
         run: |
@@ -45,6 +47,24 @@ jobs:
           fi
 
       - uses: actions/checkout@v4
+
+      # Play rejects any upload whose versionCode was already used, even on
+      # a failed/never-uploaded attempt -- so bump it unconditionally on
+      # every manual run rather than requiring a human to remember to. This
+      # commits the bump straight to the branch that triggered the run, so
+      # local checkouts stay in sync with what actually got built/published.
+      - name: Bump Android versionCode
+        working-directory: linuxtvremote/android/app
+        run: |
+          current=$(grep -oP 'versionCode \K[0-9]+' build.gradle)
+          next=$((current + 1))
+          sed -i "s/versionCode ${current}/versionCode ${next}/" build.gradle
+          echo "versionCode: ${current} -> ${next}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add build.gradle
+          git commit -m "chore: bump Android versionCode to ${next} [skip ci]"
+          git push
 
       - uses: actions/setup-node@v4
         with:
@@ -126,7 +146,7 @@ jobs:
           printf '%s\n' "$SOURCEFORGE_SSH_KEY" > ~/.ssh/sourceforge_key
           chmod 600 ~/.ssh/sourceforge_key
           ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts 2>/dev/null
-          rsync -avP -e "ssh -i ~/.ssh/sourceforge_key -o StrictHostKeyChecking=yes" \
+          rsync -avP -e "ssh -i ~/.ssh/sourceforge_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
             linuxtvremote/android/app/build/outputs/apk/release/app-release.apk \
             "${SOURCEFORGE_USER}@frs.sourceforge.net:/home/frs/project/${SOURCEFORGE_PROJECT}/android-apk/"
 
