@@ -61,6 +61,7 @@ cd "$BUILD_DIR"
 lb clean --purge 2>/dev/null || true
 
 lb config \
+  --architectures amd64 \
   --distribution trixie \
   --archive-areas "main contrib non-free non-free-firmware" \
   --binary-images iso-hybrid \
@@ -68,6 +69,7 @@ lb config \
   --iso-volume "LinuxTV" \
   --bootappend-live "boot=live components quiet splash loglevel=0 vt.global_cursor_default=0 persistence" \
   --linux-flavours amd64 \
+  --linux-packages linux-image \
   --apt-recommends false \
   --debian-installer-gui false \
   --mirror-bootstrap http://deb.debian.org/debian/ \

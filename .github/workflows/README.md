@@ -62,6 +62,12 @@ those two folders once via the SourceForge file manager before the first run
   (`Failed getting release file .../dists/trixie/Release`). This is a real
   fix to the script itself, not a CI-only workaround, so it also makes local
   builds reproducible regardless of what host they're run from.
+- `build-iso.sh` also now passes `--architectures amd64` and
+  `--linux-packages linux-image` explicitly. Without them, `lb config`
+  combined `--linux-flavours amd64` into a package name of `linux-amd64`
+  instead of the real Debian package `linux-image-amd64`
+  (`E: Unable to locate package linux-amd64`, exit 123 at the
+  `lb_chroot_install-packages` stage).
 - The Android workflow installs SDK packages by calling `sdkmanager` directly
   (`android-actions/setup-android@v3` fails on ubuntu-latest trying to touch
   the removed legacy `tools` package) with `platforms;android-35`,
