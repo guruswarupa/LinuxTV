@@ -19,6 +19,16 @@ elif ! command -v rsync >/dev/null 2>&1; then
   apt-get install -y rsync
 fi
 
+# live-build's own binary_syslinux stage auto-installs syslinux/mtools/etc.
+# as it goes, but not isolinux -- a separate package providing the El Torito
+# CD-boot loader that --binary-images iso-hybrid actually needs
+# (/usr/lib/ISOLINUX/isolinux.bin). Install it upfront rather than relying
+# on live-build to pull it in itself.
+if ! dpkg -s isolinux >/dev/null 2>&1; then
+  apt-get update
+  apt-get install -y isolinux
+fi
+
 # Clean up previous build - properly unmount chroot filesystems first
 if [ -d "$BUILD_DIR/chroot" ]; then
   echo "Cleaning up previous build..."

@@ -127,6 +127,14 @@ create missing parent directories).
   `lb_chroot_live-packages`). `--initsystem systemd` tells it to pull in
   `live-config-systemd` instead, matching what the rest of the image
   actually uses.
+- `build-iso.sh` now also installs `isolinux` on the *build host* upfront
+  (alongside `live-build`/`rsync`), because `lb_binary_syslinux` auto-installs
+  `syslinux`/`syslinux-common`/`mtools`/`librsvg2-bin` on its own as it runs
+  but doesn't pull in `isolinux` too -- a separate package providing the El
+  Torito CD-boot loader (`/usr/lib/ISOLINUX/isolinux.bin`) that
+  `--binary-images iso-hybrid` actually needs
+  (`cp: cannot stat '/root/isolinux/isolinux.bin'`, exit 1 at
+  `lb_binary_syslinux`).
 - The Android workflow downloads a fresh Android SDK cmdline-tools build
   itself rather than relying on `android-actions/setup-android@v3` (fails
   trying to touch the removed legacy `tools` package) or whatever SDK
