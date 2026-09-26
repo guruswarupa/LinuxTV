@@ -159,6 +159,17 @@ create missing parent directories).
   place even though the new version likely doesn't need them either;
   they're harmless no-ops at worst, and confirming that for certain would
   mean another slow round-trip for no real benefit right now.
+- `build-iso.sh` now also installs `debian-archive-keyring` on the host.
+  With Debian's own current live-build actually running in `debian` mode
+  (confirmed: `P: Building for a debian/trixie/amd64 system`), debootstrap
+  correctly insists on verifying the Release file against Debian's real
+  archive keyring -- which an Ubuntu host doesn't have by default, only its
+  own `ubuntu-archive-keyring` (`Cannot check Release signature; keyring
+  file not available /usr/share/keyrings/debian-archive-keyring.gpg` →
+  `Keyring-based check was requested; aborting accordingly`, exit 1 at
+  `debootstrap`). Standard, well-documented requirement for debootstrapping
+  Debian from a non-Debian host, not a version-staleness bug like the ones
+  above.
 - The Android workflow downloads a fresh Android SDK cmdline-tools build
   itself rather than relying on `android-actions/setup-android@v3` (fails
   trying to touch the removed legacy `tools` package) or whatever SDK

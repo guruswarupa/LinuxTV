@@ -12,7 +12,12 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 apt-get update
-apt-get install -y rsync isolinux cpio debootstrap
+# debian-archive-keyring: debootstrapping Debian trixie from this Ubuntu
+# host needs Debian's own archive keyring on disk to verify the Release
+# file's signature -- Ubuntu only ships its own ubuntu-archive-keyring by
+# default ("Cannot check Release signature; keyring file not available
+# /usr/share/keyrings/debian-archive-keyring.gpg", exit 1 at debootstrap).
+apt-get install -y rsync isolinux cpio debootstrap debian-archive-keyring
 
 # The live-build in Ubuntu's own apt repos is ancient (3.0~a57, a pre-2016
 # version-numbering scheme) and has accumulated a long list of mismatches
