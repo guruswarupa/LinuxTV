@@ -128,24 +128,37 @@ create missing parent directories).
   `live-config-systemd` instead, matching what the rest of the image
   actually uses.
 - `build-iso.sh` now also installs `isolinux` on the *build host* upfront
-  (alongside `live-build`/`rsync`) and passes `--syslinux-theme live-build`.
-  `lb_binary_syslinux` auto-installs `syslinux`/`syslinux-common`/`mtools`/
-  `librsvg2-bin` on its own as it runs, but that alone still wasn't enough --
-  the actual error (`cp: cannot stat '/root/isolinux/isolinux.bin'`, exit 1
-  at `lb_binary_syslinux`) is `Chroot chroot cp -aL ${_SOURCE} ...`: it
-  copies the boot theme from *inside the chroot*, and by default `_SOURCE`
-  is `/usr/share/syslinux/themes/${LB_SYSLINUX_THEME}/isolinux-live` -- a
+  (alongside `rsync`/`cpio`/`debootstrap`) -- a separate package providing
+  the El Torito CD-boot loader that `--binary-images iso-hybrid` needs.
+  Chased a `cp: cannot stat '/root/isolinux/isolinux.bin'` (exit 1 at
+  `lb_binary_syslinux`) down to `_SOURCE=/usr/share/syslinux/themes/...`, a
   path Debian's `syslinux-common` package doesn't ship at all anymore
-  (traced by downloading the actual package: its files live under
-  `/usr/lib/syslinux/`, not `/usr/share/syslinux/themes/`). This live-build
-  version has its own complete bundled theme at
-  `/usr/share/live/build/bootloaders/isolinux` (includes `isolinux.bin` and
-  `vesamenu.c32` directly) for exactly this case, selected via
-  `--syslinux-theme live-build`, which bypasses the broken external theme
-  path entirely rather than depending on a package layout that no longer
-  exists. `isolinux` on the host is kept too since `--binary-images
-  iso-hybrid` still wants the El Torito CD-boot loader for the ISO's own
-  BIOS boot support, independent of the theme issue.
+  (confirmed by downloading the actual package: its files live under
+  `/usr/lib/syslinux/`, not `/usr/share/syslinux/themes/`) -- one of several
+  staleness bugs that led to the bigger fix below, rather than something
+  patched individually (the `--syslinux-theme` flag that would have worked
+  around just this one doesn't even exist in the live-build version that
+  fix moved to).
+- **The actual fix for that, and for the trixie-security suite naming and
+  Contents.gz-path bugs noted above**: `build-iso.sh` no longer installs
+  `live-build` from Ubuntu's own apt repos at all. Ubuntu noble ships
+  `3.0~a57-1ubuntu49[.1]`, a pre-2016 version-numbering-scheme release, and
+  every bug on this list traces back to it being stale against Debian
+  trixie's current archive conventions in one way or another. Debian trixie
+  itself ships a current one (`1:20250505+deb13u1`, calendar-versioned,
+  confirmed via `sources.debian.org`) built against exactly the archive
+  layout this script actually targets. It's fetched directly
+  (`ftp.debian.org/debian/pool/main/l/live-build/...`) and installed via
+  `dpkg -i`, since apt-get would just reach for Ubuntu's stale one again.
+  Verified its actual shipped `/usr/lib/live/build/config` script still
+  accepts every `lb config` flag this file passes *except*
+  `--syslinux-theme`, which no longer exists there (the whole theme system
+  it belonged to was reworked away) -- removed rather than left to fail the
+  same way `--distribution-security` did earlier. Left `--security false`,
+  `--firmware-chroot false`, `--initsystem systemd`, and `--mode debian` in
+  place even though the new version likely doesn't need them either;
+  they're harmless no-ops at worst, and confirming that for certain would
+  mean another slow round-trip for no real benefit right now.
 - The Android workflow downloads a fresh Android SDK cmdline-tools build
   itself rather than relying on `android-actions/setup-android@v3` (fails
   trying to touch the removed legacy `tools` package) or whatever SDK
