@@ -1,0 +1,61 @@
+name: Build & Publish ISO
+
+# Manual only: a full live-build ISO run can take 30-90+ minutes, so this
+# never fires automatically on push/PR -- only from the Actions tab.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Upload the built ISO to SourceForge"
+        type: boolean
+        default: true
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check required secrets are set
+        if: ${{ inputs.publish }}
+        run: |
+          missing=()
+          [ -z "${{ secrets.SOURCEFORGE_SSH_KEY }}" ] && missing+=("SOURCEFORGE_SSH_KEY (secret)")
+          [ -z "${{ secrets.SOURCEFORGE_USER }}" ] && missing+=("SOURCEFORGE_USER (secret)")
+          [ -z "${{ vars.SOURCEFORGE_PROJECT }}" ] && missing+=("SOURCEFORGE_PROJECT (repo variable)")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing SourceForge config before spending an hour building: ${missing[*]}. See .github/workflows/README.md."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Free up runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /opt/az
+          sudo docker image prune -a -f || true
+
+      - name: Build ISO
+        working-directory: iso-builder
+        run: sudo ./build-iso.sh
+
+      - name: Upload ISO as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LinuxTV-iso
+          path: iso-builder/LinuxTV.iso
+          retention-days: 14
+
+      - name: Publish to SourceForge
+        if: ${{ inputs.publish }}
+        env:
+          SOURCEFORGE_SSH_KEY: ${{ secrets.SOURCEFORGE_SSH_KEY }}
+          SOURCEFORGE_USER: ${{ secrets.SOURCEFORGE_USER }}
+          SOURCEFORGE_PROJECT: ${{ vars.SOURCEFORGE_PROJECT }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SOURCEFORGE_SSH_KEY" > ~/.ssh/sourceforge_key
+          chmod 600 ~/.ssh/sourceforge_key
+          ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts 2>/dev/null
+          rsync -avP -e "ssh -i ~/.ssh/sourceforge_key -o StrictHostKeyChecking=yes" \
+            iso-builder/LinuxTV.iso \
+            "${SOURCEFORGE_USER}@frs.sourceforge.net:/home/frs/project/${SOURCEFORGE_PROJECT}/desktop-iso/"
