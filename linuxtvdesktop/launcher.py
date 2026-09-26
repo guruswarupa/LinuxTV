@@ -2204,6 +2204,14 @@ class HomeBackend(QObject):
     def navigate(self, direction):
         self.window.navigate(direction)
 
+    @Slot(int, int)
+    def setCurrent(self, row, col):
+        # Mouse clicks/right-clicks on a card call this to sync the click
+        # to Python's notion of "current" before acting on it -- route
+        # through focus_tile_at (not set_current directly) so it also
+        # clears search focus, exactly like a real D-pad move would.
+        self.window.focus_tile_at(row, col)
+
     @Slot()
     def activate(self):
         self.window.activate_current()
@@ -4376,7 +4384,11 @@ class LauncherWindow(QMainWindow):
                 output = (result.stdout or result.stderr or "").strip()
                 if "Already up to date" in output:
                     return True, "LinuxTV is already up to date."
-                return True, "LinuxTV was updated from GitHub. Restart the app to load the new version."
+                return True, (
+                    "LinuxTV was updated from GitHub. Restart the app to load the new version. "
+                    "If it fails to start after restarting, re-run setup.sh -- an update can "
+                    "bring in new system package requirements that a code pull alone won't install."
+                )
 
             with tempfile.TemporaryDirectory(prefix="linuxtv-update-") as temp_dir:
                 clone_result = subprocess.run(
@@ -4406,7 +4418,11 @@ class LauncherWindow(QMainWindow):
                     else:
                         shutil.copy2(child, target)
 
-            return True, "LinuxTV was updated from GitHub. Restart the app to load the new version."
+            return True, (
+                "LinuxTV was updated from GitHub. Restart the app to load the new version. "
+                "If it fails to start after restarting, re-run setup.sh -- an update can bring "
+                "in new system package requirements that a code pull alone won't install."
+            )
         except Exception as exc:
             logging.exception("Failed to update LinuxTV from GitHub")
             return False, f"Update failed: {exc}"
