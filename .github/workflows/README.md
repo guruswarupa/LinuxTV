@@ -68,6 +68,12 @@ those two folders once via the SourceForge file manager before the first run
   instead of the real Debian package `linux-image-amd64`
   (`E: Unable to locate package linux-amd64`, exit 123 at the
   `lb_chroot_install-packages` stage).
+- `build-iso.sh` also now passes `--mode debian` explicitly. Without it,
+  `live-build` auto-detects its mode from the *build host's* OS (logged as
+  `Updating config tree for a ubuntu/amd64 system`), which on the Ubuntu
+  runner pulled in Ubuntu's live-session package `casper` instead of
+  Debian's equivalent -- `casper` doesn't exist in Debian's repos at all
+  (`E: Unable to locate package casper`, exit 100 at `lb_chroot_live-packages`).
 - The Android workflow downloads a fresh Android SDK cmdline-tools build
   itself rather than relying on `android-actions/setup-android@v3` (fails
   trying to touch the removed legacy `tools` package) or whatever SDK

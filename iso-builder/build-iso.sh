@@ -61,6 +61,7 @@ cd "$BUILD_DIR"
 lb clean --purge 2>/dev/null || true
 
 lb config \
+  --mode debian \
   --architectures amd64 \
   --distribution trixie \
   --archive-areas "main contrib non-free non-free-firmware" \
