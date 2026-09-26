@@ -88,7 +88,8 @@ lb config \
   --mirror-chroot http://deb.debian.org/debian/ \
   --mirror-binary http://deb.debian.org/debian/ \
   --security false \
-  --firmware-chroot false
+  --firmware-chroot false \
+  --syslinux-theme live-build
 
 lb build 2>&1 | tee "$OUTPUT_LOG"
 

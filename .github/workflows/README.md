@@ -128,13 +128,24 @@ create missing parent directories).
   `live-config-systemd` instead, matching what the rest of the image
   actually uses.
 - `build-iso.sh` now also installs `isolinux` on the *build host* upfront
-  (alongside `live-build`/`rsync`), because `lb_binary_syslinux` auto-installs
-  `syslinux`/`syslinux-common`/`mtools`/`librsvg2-bin` on its own as it runs
-  but doesn't pull in `isolinux` too -- a separate package providing the El
-  Torito CD-boot loader (`/usr/lib/ISOLINUX/isolinux.bin`) that
-  `--binary-images iso-hybrid` actually needs
-  (`cp: cannot stat '/root/isolinux/isolinux.bin'`, exit 1 at
-  `lb_binary_syslinux`).
+  (alongside `live-build`/`rsync`) and passes `--syslinux-theme live-build`.
+  `lb_binary_syslinux` auto-installs `syslinux`/`syslinux-common`/`mtools`/
+  `librsvg2-bin` on its own as it runs, but that alone still wasn't enough --
+  the actual error (`cp: cannot stat '/root/isolinux/isolinux.bin'`, exit 1
+  at `lb_binary_syslinux`) is `Chroot chroot cp -aL ${_SOURCE} ...`: it
+  copies the boot theme from *inside the chroot*, and by default `_SOURCE`
+  is `/usr/share/syslinux/themes/${LB_SYSLINUX_THEME}/isolinux-live` -- a
+  path Debian's `syslinux-common` package doesn't ship at all anymore
+  (traced by downloading the actual package: its files live under
+  `/usr/lib/syslinux/`, not `/usr/share/syslinux/themes/`). This live-build
+  version has its own complete bundled theme at
+  `/usr/share/live/build/bootloaders/isolinux` (includes `isolinux.bin` and
+  `vesamenu.c32` directly) for exactly this case, selected via
+  `--syslinux-theme live-build`, which bypasses the broken external theme
+  path entirely rather than depending on a package layout that no longer
+  exists. `isolinux` on the host is kept too since `--binary-images
+  iso-hybrid` still wants the El Torito CD-boot loader for the ISO's own
+  BIOS boot support, independent of the theme issue.
 - The Android workflow downloads a fresh Android SDK cmdline-tools build
   itself rather than relying on `android-actions/setup-android@v3` (fails
   trying to touch the removed legacy `tools` package) or whatever SDK
