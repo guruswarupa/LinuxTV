@@ -148,7 +148,7 @@ jobs:
           ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts 2>/dev/null
           rsync -avP -e "ssh -i ~/.ssh/sourceforge_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
             linuxtvremote/android/app/build/outputs/apk/release/app-release.apk \
-            "${SOURCEFORGE_USER}@frs.sourceforge.net:/home/frs/project/${SOURCEFORGE_PROJECT}/android-apk/"
+            "${SOURCEFORGE_USER}@frs.sourceforge.net:/home/frs/project/${SOURCEFORGE_PROJECT}/release/android-apk/"
 
       # First-ever Play Store release for an app can only be uploaded by hand
       # through the Play Console -- the Publishing API only works once a

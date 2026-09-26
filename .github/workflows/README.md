@@ -51,10 +51,11 @@ no need to remember to bump it by hand before clicking "Run workflow".
 |---|---|---|
 | `SOURCEFORGE_PROJECT` | both | Your SourceForge project slug — the `<slug>` in `sourceforge.net/projects/<slug>`. Not secret, just project-specific, so it's a variable rather than a secret. |
 
-Uploads land in `/home/frs/project/<SOURCEFORGE_PROJECT>/desktop-iso/` and
-`/home/frs/project/<SOURCEFORGE_PROJECT>/android-apk/` on SourceForge — create
-those two folders once via the SourceForge file manager before the first run
-(rsync won't create missing parent directories).
+Uploads land in `/home/frs/project/<SOURCEFORGE_PROJECT>/release/desktop-iso/`
+and `/home/frs/project/<SOURCEFORGE_PROJECT>/release/android-apk/` on
+SourceForge — both already exist. If you ever recreate the project, make
+those two folders once via the SourceForge file manager first (rsync won't
+create missing parent directories).
 
 ## Notes / things I couldn't verify from here
 
