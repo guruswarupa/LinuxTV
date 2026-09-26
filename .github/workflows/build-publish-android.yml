@@ -57,7 +57,15 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
+      # android-actions/setup-android@v3 fails here: it tries to touch the
+      # legacy "tools" package, which no longer exists in the SDK repository
+      # ("Warning: Failed to find package 'tools'", exit 1). ubuntu-latest
+      # already ships an Android SDK with a working sdkmanager on PATH, so
+      # just ask it for exactly what this Expo 54 project needs instead.
+      - name: Ensure required Android SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006"
 
       - name: Install JS dependencies
         working-directory: linuxtvremote

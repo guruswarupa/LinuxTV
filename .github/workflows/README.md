@@ -55,3 +55,11 @@ those two folders once via the SourceForge file manager before the first run
   this; worth a quick glance at its repo for any changes before relying on it.
 - The ISO build installs `live-build` and runs as root inside the job, as
   `build-iso.sh` already requires locally — no change to that script was needed.
+- The Android workflow installs SDK packages by calling `sdkmanager` directly
+  (`android-actions/setup-android@v3` fails on ubuntu-latest trying to touch
+  the removed legacy `tools` package) with `platforms;android-35`,
+  `build-tools;35.0.0` and `ndk;27.1.12297006` — the current defaults baked
+  into `expo-root-project`'s Gradle plugin (see
+  `node_modules/expo-modules-autolinking/android/expo-gradle-plugin/expo-autolinking-plugin/src/main/kotlin/expo/modules/plugin/ExpoRootProjectPlugin.kt`).
+  If you bump the `expo` package to a new SDK version, check that file for
+  new defaults and update these three strings to match.
