@@ -109,11 +109,6 @@ if command -v openbox >/dev/null 2>&1; then
   sleep 0.5
 fi
 
-# plymouth-quit.service is masked (see the hook), so the splash has stayed
-# up this whole time instead of exposing a raw console. X is up now, so
-# hand off to the app.
-command -v plymouth >/dev/null 2>&1 && plymouth quit || true
-
 cd /opt/linuxtv/linuxtvdesktop
 exec /opt/linuxtv/.venv/bin/python3 /opt/linuxtv/linuxtvdesktop/launcher.py
 XINITRC
@@ -128,14 +123,6 @@ chown -R "${LINUXTV_USER}:${LINUXTV_USER}" "/home/${LINUXTV_USER}/.config"
 if command -v plymouth-set-default-theme >/dev/null 2>&1; then
   plymouth-set-default-theme -R linuxtv || true
 fi
-
-# By default plymouth-quit.service/-wait.service quit the splash as soon as
-# multi-user.target is reached, which happens right as agetty starts --
-# well before .xinitrc gets around to actually starting X. That gap is
-# exactly what exposes the raw kernel/login console text between the splash
-# and the app. Mask both so the splash only quits when .xinitrc explicitly
-# calls `plymouth quit`, right before the app takes over the display.
-systemctl mask plymouth-quit.service plymouth-quit-wait.service 2>/dev/null || true
 
 mkdir -p /etc/systemd/system/getty@.service.d
 cat > /etc/systemd/system/getty@.service.d/override.conf <<EOF
@@ -163,11 +150,6 @@ if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
   STARTUP_COUNT=${STARTUP_COUNT:-0}
   export STARTUP_COUNT=$((STARTUP_COUNT + 1))
   if [ $STARTUP_COUNT -gt 3 ]; then
-    # plymouth-quit.service is masked, and startx never got far enough to
-    # hand off to the app itself, so nothing has quit the splash yet --
-    # do it now so this debug text is actually visible instead of stuck
-    # behind a frozen splash.
-    command -v plymouth >/dev/null 2>&1 && plymouth quit
     echo "LinuxTV startup failed multiple times."
     echo "Debug: cat /tmp/linuxtv_startup.log"
   else

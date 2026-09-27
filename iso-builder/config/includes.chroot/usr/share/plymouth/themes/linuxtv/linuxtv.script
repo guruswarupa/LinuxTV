@@ -13,7 +13,7 @@ if (scale_factor > screen_height / image_height) {
     scale_factor = screen_height / image_height;
 }
 
-scale_factor = scale_factor * 0.9;
+scale_factor = scale_factor * 0.2;
 
 scaled_logo = logo_image.Scale(logo_image.GetWidth() * scale_factor, logo_image.GetHeight() * scale_factor);
 logo_sprite = Sprite(scaled_logo);
