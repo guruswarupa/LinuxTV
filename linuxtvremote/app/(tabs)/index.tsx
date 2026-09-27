@@ -22,7 +22,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps, ReactNode } from 'react';
 
@@ -130,7 +130,7 @@ const parseStoredSystems = (storedValue: string | null): SavedSystem[] => {
 // plain tint instead of a literal blur.
 function GlassSurface({
   style,
-  tint = 'rgba(37, 42, 52, 0.55)',
+  tint = 'rgba(20, 33, 61, 0.55)',
   children,
 }: {
   style?: StyleProp<ViewStyle>;
@@ -145,6 +145,7 @@ function GlassSurface({
 }
 
 export default function RemoteScreen() {
+  const insets = useSafeAreaInsets();
   const [systemName, setSystemName] = useState('');
   const [ipAddress, setIpAddress] = useState('');
   const [port, setPort] = useState(DEFAULT_PORT);
@@ -1179,10 +1180,10 @@ export default function RemoteScreen() {
   const showLoginScreen = !hasSavedSetup;
   const statusAccentColor =
     repositoryState.status === 'Connected'
-      ? '#A3BE8C'
+      ? '#22C55E'
       : repositoryState.status === 'Connecting...'
-        ? '#EBCB8B'
-        : '#BF616A';
+        ? '#F59E0B'
+        : '#EF4444';
   const tabItems: { key: TabType; label: string; icon: ComponentProps<typeof Ionicons>['name'] }[] = [
     { key: 'remote', label: 'Remote', icon: 'phone-portrait-outline' },
     { key: 'apps', label: 'Apps', icon: 'grid' },
@@ -1218,9 +1219,11 @@ export default function RemoteScreen() {
   ).current;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.rootWrapper}>
+      <View style={[styles.statusBarFill, { height: insets.top }]} />
+      <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={['#171A21', '#252A34', '#171A21']}
+        colors={['#0A1128', '#14213D', '#0A1128']}
         locations={[0, 0.55, 1]}
         style={styles.ambientBackground}
       />
@@ -1231,19 +1234,19 @@ export default function RemoteScreen() {
           </View>
         ) : null}
         {isRecording ? (
-          <View style={[styles.demoBanner, { backgroundColor: '#BF616A' }]}>
-            <Ionicons name="mic-circle" size={16} color="#ECEFF4" />
-            <Text style={[styles.demoBannerText, { color: '#ECEFF4' }]}>RECORDING</Text>
+          <View style={[styles.demoBanner, { backgroundColor: '#EF4444' }]}>
+            <Ionicons name="mic-circle" size={16} color="#F8FAFC" />
+            <Text style={[styles.demoBannerText, { color: '#F8FAFC' }]}>RECORDING</Text>
           </View>
         ) : null}
         {isReplaying ? (
-          <View style={[styles.demoBanner, { backgroundColor: '#88C0D0' }]}>
-            <Ionicons name="play-circle" size={16} color="#ECEFF4" />
-            <Text style={[styles.demoBannerText, { color: '#ECEFF4' }]}>REPLAYING MACRO</Text>
+          <View style={[styles.demoBanner, { backgroundColor: '#3B82F6' }]}>
+            <Ionicons name="play-circle" size={16} color="#F8FAFC" />
+            <Text style={[styles.demoBannerText, { color: '#F8FAFC' }]}>REPLAYING MACRO</Text>
           </View>
         ) : null}
 
-        <GlassSurface style={styles.header} tint="rgba(37, 42, 52, 0.72)">
+        <GlassSurface style={styles.header} tint="rgba(20, 33, 61, 0.72)">
           <View style={styles.headerLeft}>
             <View
               style={[
@@ -1291,7 +1294,7 @@ export default function RemoteScreen() {
               ]}
               onPress={() => setIsMenuVisible((current) => !current)}
               hitSlop={6}>
-              <Ionicons name="settings-sharp" size={20} color={isMenuVisible ? '#81A1C1' : '#D8DEE9'} />
+              <Ionicons name="settings-sharp" size={20} color={isMenuVisible ? '#60A5FA' : '#9FB3D9'} />
             </Pressable>
           ) : null}
         </GlassSurface>
@@ -1299,7 +1302,7 @@ export default function RemoteScreen() {
         {showLoginScreen ? (
           <View style={styles.loginContainer}>
             <View style={styles.loginHeader}>
-              <Ionicons name="tv" size={64} color="#88C0D0" />
+              <Ionicons name="tv" size={64} color="#3B82F6" />
               <Text style={styles.helperText}>Add your first LinuxTV system</Text>
               <Text style={styles.helperSubtext}>
                 Save multiple systems here, then switch between them from the settings gear.
@@ -1309,7 +1312,7 @@ export default function RemoteScreen() {
               value={systemName}
               onChangeText={setSystemName}
               placeholder="System name"
-              placeholderTextColor="#D8DEE9"
+              placeholderTextColor="#9FB3D9"
               autoCapitalize="words"
               autoCorrect={false}
               style={styles.input}
@@ -1319,7 +1322,7 @@ export default function RemoteScreen() {
                 value={ipAddress}
                 onChangeText={setIpAddress}
                 placeholder="IP address"
-                placeholderTextColor="#D8DEE9"
+                placeholderTextColor="#9FB3D9"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="numbers-and-punctuation"
@@ -1329,7 +1332,7 @@ export default function RemoteScreen() {
                 value={port}
                 onChangeText={setPort}
                 placeholder="Port"
-                placeholderTextColor="#D8DEE9"
+                placeholderTextColor="#9FB3D9"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="number-pad"
@@ -1340,7 +1343,7 @@ export default function RemoteScreen() {
               value={username}
               onChangeText={setUsername}
               placeholder="Username"
-              placeholderTextColor="#D8DEE9"
+              placeholderTextColor="#9FB3D9"
               autoCapitalize="none"
               autoCorrect={false}
               style={styles.input}
@@ -1349,7 +1352,7 @@ export default function RemoteScreen() {
               value={password}
               onChangeText={setPassword}
               placeholder="Password"
-              placeholderTextColor="#D8DEE9"
+              placeholderTextColor="#9FB3D9"
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
@@ -1381,26 +1384,26 @@ export default function RemoteScreen() {
                     {/* Volume Control - Left */}
                     <View style={styles.controlCard}>
                       <View style={styles.controlHeader}>
-                        <Ionicons name="volume-high" size={20} color="#A3BE8C" />
+                        <Ionicons name="volume-high" size={20} color="#22C55E" />
                         <Text style={styles.controlLabel}>Volume</Text>
                       </View>
                       <View style={styles.controlSliderVertical}>
                         <Pressable
                           style={({ pressed }) => [styles.controlBtn, pressed && styles.pressed]}
                           onPress={() => adjustVolume('up')}>
-                          <Ionicons name="add" size={24} color="#ECEFF4" />
+                          <Ionicons name="add" size={24} color="#F8FAFC" />
                         </Pressable>
                         <VerticalSlider
                           value={volumeLevel}
                           onChange={dragVolume}
                           onCommit={commitVolume}
-                          color="#A3BE8C"
+                          color="#22C55E"
                           icon="volume-high"
                         />
                         <Pressable
                           style={({ pressed }) => [styles.controlBtn, pressed && styles.pressed]}
                           onPress={() => adjustVolume('down')}>
-                          <Ionicons name="remove" size={24} color="#ECEFF4" />
+                          <Ionicons name="remove" size={24} color="#F8FAFC" />
                         </Pressable>
                       </View>
                       <Text style={styles.controlValue}>{volumeLevel}%</Text>
@@ -1410,7 +1413,7 @@ export default function RemoteScreen() {
                     <View style={styles.centerControlColumn}>
                       {/* D-Pad */}
                       <View style={styles.dpadContainer}>
-                        <GlassSurface style={styles.dpadCircle} tint="rgba(37, 42, 52, 0.72)">
+                        <GlassSurface style={styles.dpadCircle} tint="rgba(20, 33, 61, 0.72)">
                           {/* Top Button */}
                           <Pressable
                             style={({ pressed }) => [styles.dpadButton, styles.dpadTop, pressed && styles.pressed]}
@@ -1422,7 +1425,7 @@ export default function RemoteScreen() {
                               createRepeatingActionHandlers('UP').onPressOut();
                             }}
                             onPress={() => sendAction('UP')}>
-                            <Ionicons name="caret-up" size={36} color="#ECEFF4" />
+                            <Ionicons name="caret-up" size={36} color="#F8FAFC" />
                           </Pressable>
                           
                           {/* Left Button */}
@@ -1436,7 +1439,7 @@ export default function RemoteScreen() {
                               createRepeatingActionHandlers('LEFT').onPressOut();
                             }}
                             onPress={() => sendAction('LEFT')}>
-                            <Ionicons name="caret-back" size={36} color="#ECEFF4" />
+                            <Ionicons name="caret-back" size={36} color="#F8FAFC" />
                           </Pressable>
                           
                           {/* Center OK Button */}
@@ -1460,7 +1463,7 @@ export default function RemoteScreen() {
                               createRepeatingActionHandlers('RIGHT').onPressOut();
                             }}
                             onPress={() => sendAction('RIGHT')}>
-                            <Ionicons name="caret-forward" size={36} color="#ECEFF4" />
+                            <Ionicons name="caret-forward" size={36} color="#F8FAFC" />
                           </Pressable>
                           
                           {/* Bottom Button */}
@@ -1474,7 +1477,7 @@ export default function RemoteScreen() {
                               createRepeatingActionHandlers('DOWN').onPressOut();
                             }}
                             onPress={() => sendAction('DOWN')}>
-                            <Ionicons name="caret-down" size={36} color="#ECEFF4" />
+                            <Ionicons name="caret-down" size={36} color="#F8FAFC" />
                           </Pressable>
                         </GlassSurface>
                       </View>
@@ -1483,26 +1486,26 @@ export default function RemoteScreen() {
                     {/* Brightness Control - Right */}
                     <View style={styles.controlCard}>
                       <View style={styles.controlHeader}>
-                        <Ionicons name="sunny" size={20} color="#EBCB8B" />
+                        <Ionicons name="sunny" size={20} color="#F59E0B" />
                         <Text style={styles.controlLabel}>Brightness</Text>
                       </View>
                       <View style={styles.controlSliderVertical}>
                         <Pressable
                           style={({ pressed }) => [styles.controlBtn, pressed && styles.pressed]}
                           onPress={() => adjustBrightness('up')}>
-                          <Ionicons name="add" size={24} color="#ECEFF4" />
+                          <Ionicons name="add" size={24} color="#F8FAFC" />
                         </Pressable>
                         <VerticalSlider
                           value={brightnessLevel}
                           onChange={dragBrightness}
                           onCommit={commitBrightness}
-                          color="#EBCB8B"
+                          color="#F59E0B"
                           icon="sunny"
                         />
                         <Pressable
                           style={({ pressed }) => [styles.controlBtn, pressed && styles.pressed]}
                           onPress={() => adjustBrightness('down')}>
-                          <Ionicons name="remove" size={24} color="#ECEFF4" />
+                          <Ionicons name="remove" size={24} color="#F8FAFC" />
                         </Pressable>
                       </View>
                       <Text style={styles.controlValue}>{brightnessLevel}%</Text>
@@ -1558,6 +1561,7 @@ export default function RemoteScreen() {
                     <ControlButton
                       icon="close"
                       label="Close"
+                      iconColor="#F8FAFC"
                       onPress={() => {
                         sendAction('CLOSE_APP');
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1568,6 +1572,7 @@ export default function RemoteScreen() {
                     <ControlButton
                       icon={repositoryState.lastAction === 'PLAY_PAUSE' ? "pause" : "play"}
                       label="Play"
+                      iconColor="#F8FAFC"
                       onPress={() => {
                         sendAction('PLAY_PAUSE');
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1661,12 +1666,12 @@ export default function RemoteScreen() {
                       <Pressable
                         style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed]}
                         onPress={fetchApps}>
-                        <Ionicons name="refresh" size={20} color="#88C0D0" />
+                        <Ionicons name="refresh" size={20} color="#3B82F6" />
                       </Pressable>
                       <Pressable
                         style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed]}
                         onPress={showAddApp}>
-                        <Ionicons name="add" size={20} color="#88C0D0" />
+                        <Ionicons name="add" size={20} color="#3B82F6" />
                       </Pressable>
                     </View>
                   </View>
@@ -1678,7 +1683,7 @@ export default function RemoteScreen() {
                         <TextInput
                           style={styles.appInput}
                           placeholder="App Name"
-                          placeholderTextColor="#D8DEE9"
+                          placeholderTextColor="#9FB3D9"
                           value={newAppName}
                           onChangeText={setNewAppName}
                         />
@@ -1687,7 +1692,7 @@ export default function RemoteScreen() {
                           <Pressable
                             style={[styles.appTypeButton, newAppType === 'native' && styles.appTypeButtonActive]}
                             onPress={() => setNewAppType('native')}>
-                            <Ionicons name="desktop" size={16} color={newAppType === 'native' ? '#88C0D0' : '#D8DEE9'} />
+                            <Ionicons name="desktop" size={16} color={newAppType === 'native' ? '#3B82F6' : '#9FB3D9'} />
                             <Text style={[styles.appTypeText, newAppType === 'native' && styles.appTypeTextActive]}>
                               Native
                             </Text>
@@ -1695,7 +1700,7 @@ export default function RemoteScreen() {
                           <Pressable
                             style={[styles.appTypeButton, newAppType === 'web' && styles.appTypeButtonActive]}
                             onPress={() => setNewAppType('web')}>
-                            <Ionicons name="globe" size={16} color={newAppType === 'web' ? '#88C0D0' : '#D8DEE9'} />
+                            <Ionicons name="globe" size={16} color={newAppType === 'web' ? '#3B82F6' : '#9FB3D9'} />
                             <Text style={[styles.appTypeText, newAppType === 'web' && styles.appTypeTextActive]}>
                               Web
                             </Text>
@@ -1706,7 +1711,7 @@ export default function RemoteScreen() {
                           <TextInput
                             style={styles.appInput}
                             placeholder="Command (e.g., vlc, firefox)"
-                            placeholderTextColor="#D8DEE9"
+                            placeholderTextColor="#9FB3D9"
                             value={newAppCommand}
                             onChangeText={setNewAppCommand}
                           />
@@ -1714,7 +1719,7 @@ export default function RemoteScreen() {
                           <TextInput
                             style={styles.appInput}
                             placeholder="URL (e.g., https://youtube.com)"
-                            placeholderTextColor="#D8DEE9"
+                            placeholderTextColor="#9FB3D9"
                             value={newAppUrl}
                             onChangeText={setNewAppUrl}
                             keyboardType="url"
@@ -1742,7 +1747,7 @@ export default function RemoteScreen() {
                     {serverApps.filter(app => app.kind === 'native').length > 0 && (
                       <>
                         <View style={styles.sectionHeader}>
-                          <Ionicons name="desktop" size={18} color="#88C0D0" />
+                          <Ionicons name="desktop" size={18} color="#3B82F6" />
                           <Text style={styles.sectionTitle}>Apps</Text>
                         </View>
                         {serverApps
@@ -1765,7 +1770,7 @@ export default function RemoteScreen() {
                     {serverApps.filter(app => app.kind === 'web').length > 0 && (
                       <>
                         <View style={styles.sectionHeader}>
-                          <Ionicons name="globe" size={18} color="#88C0D0" />
+                          <Ionicons name="globe" size={18} color="#3B82F6" />
                           <Text style={styles.sectionTitle}>Streaming</Text>
                         </View>
                         {serverApps
@@ -1787,7 +1792,7 @@ export default function RemoteScreen() {
                   
                   {serverApps.length === 0 && (
                     <View style={styles.emptyApps}>
-                      <Ionicons name="apps" size={64} color="#D8DEE9" />
+                      <Ionicons name="apps" size={64} color="#9FB3D9" />
                       <Text style={styles.emptyAppsText}>No apps found</Text>
                       <Text style={styles.emptyAppsSubtext}>Tap refresh to load apps from server</Text>
                     </View>
@@ -1807,7 +1812,7 @@ export default function RemoteScreen() {
                       value={keyboardDraft}
                       onChangeText={setKeyboardDraft}
                       placeholder="Type text..."
-                      placeholderTextColor="#D8DEE9"
+                      placeholderTextColor="#9FB3D9"
                       autoCapitalize="none"
                       autoCorrect={false}
                       multiline
@@ -1819,7 +1824,7 @@ export default function RemoteScreen() {
                         sendKeyboardText();
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                       }}>
-                      <Ionicons name="paper-plane" size={20} color="#ECEFF4" />
+                      <Ionicons name="paper-plane" size={20} color="#F8FAFC" />
                       <Text style={styles.primaryButtonText}>Send</Text>
                     </Pressable>
                   </View>
@@ -1998,13 +2003,13 @@ export default function RemoteScreen() {
                         style={({ pressed }) => [
                           styles.refreshButton,
                           pressed && styles.pressed,
-                          isRecording && { backgroundColor: '#BF616A', borderColor: '#BF616A' },
+                          isRecording && { backgroundColor: '#EF4444', borderColor: '#EF4444' },
                         ]}
                         onPress={toggleRecording}>
                         <Ionicons
                           name={isRecording ? 'stop-circle' : 'mic-circle'}
                           size={20}
-                          color="#ECEFF4"
+                          color="#F8FAFC"
                         />
                       </Pressable>
                     </View>
@@ -2017,7 +2022,7 @@ export default function RemoteScreen() {
 
                   {savedMacros.length === 0 && !isRecording && (
                     <View style={styles.emptyApps}>
-                      <Ionicons name="list" size={64} color="#D8DEE9" />
+                      <Ionicons name="list" size={64} color="#9FB3D9" />
                       <Text style={styles.emptyAppsText}>No macros saved</Text>
                       <Text style={styles.emptyAppsSubtext}>
                         Press the record button to create one.
@@ -2028,14 +2033,14 @@ export default function RemoteScreen() {
                   {savedMacros.map(macro => (
                     <View key={macro.id} style={styles.systemRow}>
                       <Pressable style={styles.systemRowLeft} onPress={() => replayMacro(macro)}>
-                        <Ionicons name="play-circle" size={24} color="#88C0D0" />
+                        <Ionicons name="play-circle" size={24} color="#3B82F6" />
                         <View style={styles.systemRowText}>
                           <Text style={styles.systemName}>{macro.name}</Text>
                           <Text style={styles.systemMeta}>{macro.actions.length} actions</Text>
                         </View>
                       </Pressable>
                       <Pressable style={styles.bluetoothRemoveButton} onPress={() => openRenameMacroEditor(macro)}>
-                        <Ionicons name="create-outline" size={18} color="#D8DEE9" />
+                        <Ionicons name="create-outline" size={18} color="#9FB3D9" />
                       </Pressable>
                       <Pressable
                         style={styles.bluetoothRemoveButton}
@@ -2045,7 +2050,7 @@ export default function RemoteScreen() {
                             { text: 'Delete', style: 'destructive', onPress: () => deleteMacro(macro.id) },
                           ]);
                         }}>
-                        <Ionicons name="trash-outline" size={18} color="#BF616A" />
+                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
                       </Pressable>
                     </View>
                   ))}
@@ -2058,7 +2063,7 @@ export default function RemoteScreen() {
                 <View style={styles.touchpadWrapper}>
                   <View style={styles.touchpadSurface} {...touchpadResponder.panHandlers}>
                     <View style={styles.touchpadInner}>
-                      <Ionicons name="hand-left" size={48} color="#88C0D0" />
+                      <Ionicons name="hand-left" size={48} color="#3B82F6" />
                       <Text style={styles.touchpadText}>Touchpad</Text>
                       <Text style={styles.touchpadHint}>Tap to click • Drag to move</Text>
                     </View>
@@ -2071,7 +2076,7 @@ export default function RemoteScreen() {
                         repositoryRef.current?.sendPointerEvent('scroll', { dx: 0, dy: -1 });
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}>
-                      <Ionicons name="chevron-up" size={24} color="#D8DEE9" />
+                      <Ionicons name="chevron-up" size={24} color="#9FB3D9" />
                     </Pressable>
                     <View
                       style={styles.scrollTrack}
@@ -2108,7 +2113,7 @@ export default function RemoteScreen() {
                         repositoryRef.current?.sendPointerEvent('scroll', { dx: 0, dy: 1 });
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}>
-                      <Ionicons name="chevron-down" size={24} color="#D8DEE9" />
+                      <Ionicons name="chevron-down" size={24} color="#9FB3D9" />
                     </Pressable>
                   </View>
                 </View>
@@ -2140,7 +2145,7 @@ export default function RemoteScreen() {
 
       {!showLoginScreen && (
         <View style={styles.tabBarContainer}>
-          <GlassSurface style={styles.tabBar} tint="rgba(37, 42, 52, 0.72)">
+          <GlassSurface style={styles.tabBar} tint="rgba(20, 33, 61, 0.72)">
             {tabItems.map((tab) => (
               <Pressable
                 key={tab.key}
@@ -2156,7 +2161,7 @@ export default function RemoteScreen() {
                 <Ionicons
                   name={tab.icon}
                   size={22}
-                  color={activeTab === tab.key ? '#81A1C1' : '#D8DEE9'}
+                  color={activeTab === tab.key ? '#60A5FA' : '#9FB3D9'}
                 />
                 <Text
                   style={[
@@ -2178,10 +2183,10 @@ export default function RemoteScreen() {
         onRequestClose={() => setIsMenuVisible(false)}>
         <Pressable style={styles.menuOverlay} onPress={() => setIsMenuVisible(false)}>
           <Pressable onPress={() => undefined} style={styles.menuSheetWrap}>
-          <GlassSurface style={styles.menuSheet} tint="rgba(37, 42, 52, 0.88)">
+          <GlassSurface style={styles.menuSheet} tint="rgba(20, 33, 61, 0.88)">
             {/* Header */}
             <View style={styles.menuHeader}>
-              <Ionicons name="settings" size={24} color="#88C0D0" />
+              <Ionicons name="settings" size={24} color="#3B82F6" />
               <Text style={styles.menuHeaderTitle}>Settings</Text>
             </View>
             
@@ -2207,7 +2212,7 @@ export default function RemoteScreen() {
                         <Ionicons 
                           name={system.id === activeSystemId ? "radio-button-on" : "radio-button-off"} 
                           size={18} 
-                          color={system.id === activeSystemId ? "#A3BE8C" : "#D8DEE9"} 
+                          color={system.id === activeSystemId ? "#22C55E" : "#9FB3D9"} 
                         />
                         <View style={styles.systemRowText}>
                           <Text style={styles.systemName}>{system.name}</Text>
@@ -2232,7 +2237,7 @@ export default function RemoteScreen() {
                   style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
                   onPress={openAddSystemEditor}>
                   <View style={styles.menuItemContent}>
-                    <Ionicons name="add-circle" size={20} color="#88C0D0" />
+                    <Ionicons name="add-circle" size={20} color="#3B82F6" />
                     <Text style={styles.menuItemText}>Add System</Text>
                   </View>
                 </Pressable>
@@ -2242,7 +2247,7 @@ export default function RemoteScreen() {
                     style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
                     onPress={openEditSystemEditor}>
                     <View style={styles.menuItemContent}>
-                      <Ionicons name="create" size={20} color="#88C0D0" />
+                      <Ionicons name="create" size={20} color="#3B82F6" />
                       <Text style={styles.menuItemText}>Edit System</Text>
                     </View>
                   </Pressable>
@@ -2253,7 +2258,7 @@ export default function RemoteScreen() {
                     style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
                     onPress={confirmRemoveActiveSystem}>
                     <View style={styles.menuItemContent}>
-                      <Ionicons name="trash" size={20} color="#BF616A" />
+                      <Ionicons name="trash" size={20} color="#EF4444" />
                       <Text style={styles.menuItemDangerText}>Remove System</Text>
                     </View>
                   </Pressable>
@@ -2272,7 +2277,7 @@ export default function RemoteScreen() {
                 fetchWifiNetworks();
               }}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="wifi" size={20} color="#88C0D0" />
+                <Ionicons name="wifi" size={20} color="#3B82F6" />
                 <Text style={styles.menuItemText}>Wi-Fi</Text>
               </View>
             </Pressable>
@@ -2285,7 +2290,7 @@ export default function RemoteScreen() {
                 fetchBluetoothDevices();
               }}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="bluetooth" size={20} color="#88C0D0" />
+                <Ionicons name="bluetooth" size={20} color="#3B82F6" />
                 <Text style={styles.menuItemText}>Bluetooth</Text>
               </View>
             </Pressable>
@@ -2298,7 +2303,7 @@ export default function RemoteScreen() {
                 fetchSoundDevices();
               }}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="volume-high" size={20} color="#88C0D0" />
+                <Ionicons name="volume-high" size={20} color="#3B82F6" />
                 <Text style={styles.menuItemText}>Sound</Text>
               </View>
             </Pressable>
@@ -2310,7 +2315,7 @@ export default function RemoteScreen() {
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
               onPress={() => confirmPowerAction('UPDATE')}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="download" size={20} color="#88C0D0" />
+                <Ionicons name="download" size={20} color="#3B82F6" />
                 <Text style={styles.menuItemText}>Update System</Text>
               </View>
             </Pressable>
@@ -2320,7 +2325,7 @@ export default function RemoteScreen() {
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
               onPress={() => confirmPowerAction('SHUTDOWN')}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="power" size={20} color="#BF616A" />
+                <Ionicons name="power" size={20} color="#EF4444" />
                 <Text style={styles.menuItemDangerText}>Shutdown</Text>
               </View>
             </Pressable>
@@ -2329,7 +2334,7 @@ export default function RemoteScreen() {
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
               onPress={() => confirmPowerAction('REBOOT')}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="refresh" size={20} color="#BF616A" />
+                <Ionicons name="refresh" size={20} color="#EF4444" />
                 <Text style={styles.menuItemDangerText}>Reboot</Text>
               </View>
             </Pressable>
@@ -2338,7 +2343,7 @@ export default function RemoteScreen() {
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
               onPress={() => confirmPowerAction('SLEEP')}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="moon" size={20} color="#EBCB8B" />
+                <Ionicons name="moon" size={20} color="#F59E0B" />
                 <Text style={styles.menuItemWarningText}>Sleep</Text>
               </View>
             </Pressable>
@@ -2349,7 +2354,7 @@ export default function RemoteScreen() {
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
               onPress={confirmLogout}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="log-out" size={20} color="#BF616A" />
+                <Ionicons name="log-out" size={20} color="#EF4444" />
                 <Text style={styles.menuItemDangerText}>
                   {repositoryState.isDemoMode ? 'Exit Demo' : 'Logout & Clear Systems'}
                 </Text>
@@ -2372,7 +2377,7 @@ export default function RemoteScreen() {
             resetEditorToActiveSystem();
           }}>
           <Pressable onPress={() => undefined}>
-          <GlassSurface style={styles.editorSheet} tint="rgba(37, 42, 52, 0.88)">
+          <GlassSurface style={styles.editorSheet} tint="rgba(20, 33, 61, 0.88)">
             <Text style={styles.editorTitle}>
               {editingSystemId ? 'Edit system' : 'Add system'}
             </Text>
@@ -2383,7 +2388,7 @@ export default function RemoteScreen() {
               value={systemName}
               onChangeText={setSystemName}
               placeholder="System name"
-              placeholderTextColor="#D8DEE9"
+              placeholderTextColor="#9FB3D9"
               autoCapitalize="words"
               autoCorrect={false}
               style={styles.input}
@@ -2393,7 +2398,7 @@ export default function RemoteScreen() {
                 value={ipAddress}
                 onChangeText={setIpAddress}
                 placeholder="IP address"
-                placeholderTextColor="#D8DEE9"
+                placeholderTextColor="#9FB3D9"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="numbers-and-punctuation"
@@ -2403,7 +2408,7 @@ export default function RemoteScreen() {
                 value={port}
                 onChangeText={setPort}
                 placeholder="Port"
-                placeholderTextColor="#D8DEE9"
+                placeholderTextColor="#9FB3D9"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="number-pad"
@@ -2414,7 +2419,7 @@ export default function RemoteScreen() {
               value={username}
               onChangeText={setUsername}
               placeholder="Username"
-              placeholderTextColor="#D8DEE9"
+              placeholderTextColor="#9FB3D9"
               autoCapitalize="none"
               autoCorrect={false}
               style={styles.input}
@@ -2423,7 +2428,7 @@ export default function RemoteScreen() {
               value={password}
               onChangeText={setPassword}
               placeholder="Password"
-              placeholderTextColor="#D8DEE9"
+              placeholderTextColor="#9FB3D9"
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
@@ -2457,12 +2462,12 @@ export default function RemoteScreen() {
         onRequestClose={() => setIsWifiVisible(false)}>
         <Pressable style={styles.settingsOverlay} onPress={() => setIsWifiVisible(false)}>
           <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
-          <GlassSurface style={styles.settingsSheet} tint="rgba(37, 42, 52, 0.88)">
+          <GlassSurface style={styles.settingsSheet} tint="rgba(20, 33, 61, 0.88)">
             <View style={styles.settingsHeader}>
-              <Ionicons name="wifi" size={24} color="#88C0D0" />
+              <Ionicons name="wifi" size={24} color="#3B82F6" />
               <Text style={styles.settingsTitle}>Wi-Fi Settings</Text>
               <Pressable onPress={() => setIsWifiVisible(false)} style={styles.settingsCloseButton}>
-                <Ionicons name="close" size={24} color="#D8DEE9" />
+                <Ionicons name="close" size={24} color="#9FB3D9" />
               </Pressable>
             </View>
             
@@ -2471,7 +2476,7 @@ export default function RemoteScreen() {
               
               {wifiLoading ? (
                 <View style={styles.settingsLoading}>
-                  <Ionicons name="sync" size={32} color="#88C0D0" />
+                  <Ionicons name="sync" size={32} color="#3B82F6" />
                   <Text style={styles.settingsLoadingText}>Scanning networks...</Text>
                 </View>
               ) : (
@@ -2495,12 +2500,12 @@ export default function RemoteScreen() {
                         <Ionicons 
                           name={currentWifi === network.ssid ? "checkmark-circle" : "wifi"} 
                           size={20} 
-                          color={currentWifi === network.ssid ? "#A3BE8C" : "#D8DEE9"} 
+                          color={currentWifi === network.ssid ? "#22C55E" : "#9FB3D9"} 
                         />
                         <View style={styles.networkItemText}>
                           <Text style={styles.networkName}>{network.label || network.ssid}</Text>
                           {network.security && network.security.toLowerCase() !== 'open' && (
-                            <Ionicons name="lock-closed" size={12} color="#D8DEE9" />
+                            <Ionicons name="lock-closed" size={12} color="#9FB3D9" />
                           )}
                         </View>
                       </View>
@@ -2512,7 +2517,7 @@ export default function RemoteScreen() {
                   
                   {wifiNetworks.length === 0 && (
                     <View style={styles.settingsEmpty}>
-                      <Ionicons name="wifi-outline" size={48} color="#D8DEE9" />
+                      <Ionicons name="wifi-outline" size={48} color="#9FB3D9" />
                       <Text style={styles.settingsEmptyText}>No networks found</Text>
                     </View>
                   )}
@@ -2526,14 +2531,14 @@ export default function RemoteScreen() {
                     value={wifiPassword}
                     onChangeText={setWifiPassword}
                     placeholder="Enter Wi-Fi password"
-                    placeholderTextColor="#D8DEE9"
+                    placeholderTextColor="#9FB3D9"
                     secureTextEntry
                     style={styles.settingsInput}
                   />
                   <Pressable
                     style={styles.settingsActionButton}
                     onPress={connectToSelectedWifi}>
-                    <Ionicons name="checkmark" size={20} color="#A3BE8C" />
+                    <Ionicons name="checkmark" size={20} color="#22C55E" />
                     <Text style={styles.settingsActionButtonText}>Connect</Text>
                   </Pressable>
                 </View>
@@ -2552,7 +2557,7 @@ export default function RemoteScreen() {
               <Pressable
                 style={styles.settingsActionButton}
                 onPress={fetchWifiNetworks}>
-                <Ionicons name="refresh" size={20} color="#88C0D0" />
+                <Ionicons name="refresh" size={20} color="#3B82F6" />
                 <Text style={styles.settingsActionButtonText}>Refresh Networks</Text>
               </Pressable>
             </ScrollView>
@@ -2569,12 +2574,12 @@ export default function RemoteScreen() {
         onRequestClose={() => setIsBluetoothVisible(false)}>
         <Pressable style={styles.settingsOverlay} onPress={() => setIsBluetoothVisible(false)}>
           <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
-          <GlassSurface style={styles.settingsSheet} tint="rgba(37, 42, 52, 0.88)">
+          <GlassSurface style={styles.settingsSheet} tint="rgba(20, 33, 61, 0.88)">
             <View style={styles.settingsHeader}>
-              <Ionicons name="bluetooth" size={24} color="#88C0D0" />
+              <Ionicons name="bluetooth" size={24} color="#3B82F6" />
               <Text style={styles.settingsTitle}>Bluetooth Settings</Text>
               <Pressable onPress={() => setIsBluetoothVisible(false)} style={styles.settingsCloseButton}>
-                <Ionicons name="close" size={24} color="#D8DEE9" />
+                <Ionicons name="close" size={24} color="#9FB3D9" />
               </Pressable>
             </View>
             
@@ -2583,7 +2588,7 @@ export default function RemoteScreen() {
               
               {bluetoothLoading ? (
                 <View style={styles.settingsLoading}>
-                  <Ionicons name="sync" size={32} color="#88C0D0" />
+                  <Ionicons name="sync" size={32} color="#3B82F6" />
                   <Text style={styles.settingsLoadingText}>Scanning devices...</Text>
                 </View>
               ) : (
@@ -2594,7 +2599,7 @@ export default function RemoteScreen() {
                         <Ionicons 
                           name={device.connected ? "bluetooth" : "bluetooth-outline"} 
                           size={20} 
-                          color={device.connected ? "#A3BE8C" : "#D8DEE9"} 
+                          color={device.connected ? "#22C55E" : "#9FB3D9"} 
                         />
                         <View style={styles.bluetoothItemText}>
                           <Text style={styles.bluetoothName}>{device.name || device.label}</Text>
@@ -2624,7 +2629,7 @@ export default function RemoteScreen() {
                               ]
                             );
                           }}>
-                          <Ionicons name="trash-outline" size={18} color="#BF616A" />
+                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
                         </Pressable>
                       </View>
                     </View>
@@ -2632,7 +2637,7 @@ export default function RemoteScreen() {
                   
                   {bluetoothDevices.length === 0 && (
                     <View style={styles.settingsEmpty}>
-                      <Ionicons name="bluetooth-outline" size={48} color="#D8DEE9" />
+                      <Ionicons name="bluetooth-outline" size={48} color="#9FB3D9" />
                       <Text style={styles.settingsEmptyText}>No devices found</Text>
                     </View>
                   )}
@@ -2652,7 +2657,7 @@ export default function RemoteScreen() {
               <Pressable
                 style={styles.settingsActionButton}
                 onPress={fetchBluetoothDevices}>
-                <Ionicons name="refresh" size={20} color="#88C0D0" />
+                <Ionicons name="refresh" size={20} color="#3B82F6" />
                 <Text style={styles.settingsActionButtonText}>Refresh Devices</Text>
               </Pressable>
             </ScrollView>
@@ -2669,12 +2674,12 @@ export default function RemoteScreen() {
         onRequestClose={() => setIsSoundVisible(false)}>
         <Pressable style={styles.settingsOverlay} onPress={() => setIsSoundVisible(false)}>
           <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
-          <GlassSurface style={styles.settingsSheet} tint="rgba(37, 42, 52, 0.88)">
+          <GlassSurface style={styles.settingsSheet} tint="rgba(20, 33, 61, 0.88)">
             <View style={styles.settingsHeader}>
-              <Ionicons name="volume-high" size={24} color="#88C0D0" />
+              <Ionicons name="volume-high" size={24} color="#3B82F6" />
               <Text style={styles.settingsTitle}>Sound Settings</Text>
               <Pressable onPress={() => setIsSoundVisible(false)} style={styles.settingsCloseButton}>
-                <Ionicons name="close" size={24} color="#D8DEE9" />
+                <Ionicons name="close" size={24} color="#9FB3D9" />
               </Pressable>
             </View>
             
@@ -2683,7 +2688,7 @@ export default function RemoteScreen() {
               
               {soundLoading ? (
                 <View style={styles.settingsLoading}>
-                  <Ionicons name="sync" size={32} color="#88C0D0" />
+                  <Ionicons name="sync" size={32} color="#3B82F6" />
                   <Text style={styles.settingsLoadingText}>Loading devices...</Text>
                 </View>
               ) : (
@@ -2704,7 +2709,7 @@ export default function RemoteScreen() {
                         <Ionicons 
                           name={defaultSink === speaker.name ? "volume-high" : "volume-low"} 
                           size={20} 
-                          color={defaultSink === speaker.name ? "#A3BE8C" : "#D8DEE9"} 
+                          color={defaultSink === speaker.name ? "#22C55E" : "#9FB3D9"} 
                         />
                         <Text style={styles.speakerName}>{speaker.label}</Text>
                       </View>
@@ -2718,7 +2723,7 @@ export default function RemoteScreen() {
                   
                   {soundSpeakers.length === 0 && (
                     <View style={styles.settingsEmpty}>
-                      <Ionicons name="volume-mute-outline" size={48} color="#D8DEE9" />
+                      <Ionicons name="volume-mute-outline" size={48} color="#9FB3D9" />
                       <Text style={styles.settingsEmptyText}>No audio devices found</Text>
                     </View>
                   )}
@@ -2738,7 +2743,7 @@ export default function RemoteScreen() {
               <Pressable
                 style={styles.settingsActionButton}
                 onPress={fetchSoundDevices}>
-                <Ionicons name="refresh" size={20} color="#88C0D0" />
+                <Ionicons name="refresh" size={20} color="#3B82F6" />
                 <Text style={styles.settingsActionButtonText}>Refresh Devices</Text>
               </Pressable>
             </ScrollView>
@@ -2757,7 +2762,7 @@ export default function RemoteScreen() {
           style={styles.editorOverlay}
           onPress={() => setIsSaveMacroVisible(false)}>
           <Pressable onPress={() => undefined}>
-          <GlassSurface style={styles.editorSheet} tint="rgba(37, 42, 52, 0.88)">
+          <GlassSurface style={styles.editorSheet} tint="rgba(20, 33, 61, 0.88)">
             <Text style={styles.editorTitle}>{editingMacro ? 'Rename Macro' : 'Save Macro'}</Text>
             <Text style={styles.editorSubtitle}>
               {editingMacro ? 'Enter a new name for this macro.' : 'Give this recorded sequence of actions a name.'}
@@ -2766,7 +2771,7 @@ export default function RemoteScreen() {
               value={newMacroName}
               onChangeText={setNewMacroName}
               placeholder="Macro name"
-              placeholderTextColor="#D8DEE9"
+              placeholderTextColor="#9FB3D9"
               autoCapitalize="words"
               style={styles.input}
             />
@@ -2784,7 +2789,8 @@ export default function RemoteScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -2797,6 +2803,7 @@ function ControlButton({
   textStyle,
   icon,
   iconSize = 20,
+  iconColor = '#9FB3D9',
 }: {
   label: string;
   icon?: ComponentProps<typeof Ionicons>['name'];
@@ -2806,6 +2813,7 @@ function ControlButton({
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>
   iconSize?: number;
+  iconColor?: string;
 }) {
   return (
     <Pressable
@@ -2813,7 +2821,7 @@ function ControlButton({
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}>
-      {icon && <Ionicons name={icon} size={iconSize} color="#D8DEE9" style={styles.buttonIcon}/>}
+      {icon && <Ionicons name={icon} size={iconSize} color={iconColor} style={styles.buttonIcon}/>}
       <Text style={textStyle}>{label}</Text>
     </Pressable>
   );
@@ -2879,7 +2887,7 @@ function VerticalSlider({
       }}
       {...responder.panHandlers}>
       <View style={[styles.sliderTrackFillVertical, { height: `${value}%`, backgroundColor: color }]} />
-      <Ionicons name={icon} size={14} color="rgba(236, 239, 244, 0.35)" style={styles.sliderTrackIcon} />
+      <Ionicons name={icon} size={14} color="rgba(224, 236, 255, 0.35)" style={styles.sliderTrackIcon} />
       <View
         style={[
           styles.sliderThumb,
@@ -2919,7 +2927,7 @@ function AppTile({
           onPress={onMoveLeft}
           disabled={!onMoveLeft}
           hitSlop={8}>
-          <Ionicons name="chevron-back" size={12} color={onMoveLeft ? '#D8DEE9' : 'rgba(216, 222, 233, 0.25)'} />
+          <Ionicons name="chevron-back" size={12} color={onMoveLeft ? '#9FB3D9' : 'rgba(159, 179, 217, 0.25)'} />
         </Pressable>
         <Pressable
           style={({ pressed }) => [
@@ -2930,20 +2938,20 @@ function AppTile({
           onPress={onMoveRight}
           disabled={!onMoveRight}
           hitSlop={8}>
-          <Ionicons name="chevron-forward" size={12} color={onMoveRight ? '#D8DEE9' : 'rgba(216, 222, 233, 0.25)'} />
+          <Ionicons name="chevron-forward" size={12} color={onMoveRight ? '#9FB3D9' : 'rgba(159, 179, 217, 0.25)'} />
         </Pressable>
       </View>
       <Pressable
         style={({ pressed }) => [styles.tileDeleteButton, pressed && styles.pressed]}
         onPress={onRemove}
         hitSlop={8}>
-        <Ionicons name="trash" size={13} color="#BF616A" />
+        <Ionicons name="trash" size={13} color="#EF4444" />
       </Pressable>
       <View style={styles.tileIconWrap}>
         {app.icon ? (
           <RNImage source={{ uri: app.icon }} style={styles.tileIconImage} resizeMode="contain" />
         ) : (
-          <Ionicons name={fallbackIcon} size={32} color="#88C0D0" />
+          <Ionicons name={fallbackIcon} size={32} color="#3B82F6" />
         )}
       </View>
       <Text style={styles.tileName} numberOfLines={1} ellipsizeMode="tail">
@@ -2954,12 +2962,24 @@ function AppTile({
 }
 
 const styles = StyleSheet.create({
+  rootWrapper: {
+    flex: 1,
+    backgroundColor: '#0A1128',
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: '#171A21',
+    backgroundColor: '#0A1128',
+  },
+  statusBarFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#3B82F6',
+    zIndex: 10,
   },
   ambientBackground: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   container: {
     flex: 1,
@@ -2970,12 +2990,12 @@ const styles = StyleSheet.create({
   glassClip: {
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(236, 239, 244, 0.08)',
+    borderColor: 'rgba(224, 236, 255, 0.08)',
   },
   // ... existing styles
   demoBanner: {
     alignSelf: 'flex-start',
-    backgroundColor: '#EBCB8B',
+    backgroundColor: '#F59E0B',
     borderRadius: 999,
     marginBottom: 12,
     paddingHorizontal: 12,
@@ -2985,7 +3005,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   demoBannerText: {
-    color: '#171A21',
+    color: '#0A1128',
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.4,
@@ -3022,13 +3042,13 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   title: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   deviceName: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 12.5,
     fontWeight: '500',
     flexShrink: 1,
@@ -3037,7 +3057,7 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: 'rgba(76, 86, 106, 0.5)',
+    backgroundColor: 'rgba(147, 197, 253, 0.5)',
     marginHorizontal: 6,
     flexShrink: 0,
   },
@@ -3056,12 +3076,12 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   statusPillOnline: {
-    backgroundColor: 'rgba(163, 190, 140, 0.12)',
-    borderColor: 'rgba(163, 190, 140, 0.35)',
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderColor: 'rgba(34, 197, 94, 0.35)',
   },
   statusPillOffline: {
-    backgroundColor: 'rgba(191, 97, 106, 0.1)',
-    borderColor: 'rgba(191, 97, 106, 0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   statusDot: {
     width: 10,
@@ -3069,15 +3089,15 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   statusOnline: {
-    backgroundColor: '#A3BE8C',
-    shadowColor: '#A3BE8C',
+    backgroundColor: '#22C55E',
+    shadowColor: '#22C55E',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
   },
   statusOffline: {
-    backgroundColor: '#BF616A',
-    shadowColor: '#BF616A',
+    backgroundColor: '#EF4444',
+    shadowColor: '#EF4444',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
@@ -3087,17 +3107,17 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuButtonActive: {
-    borderColor: '#88C0D0',
-    backgroundColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: '#3B82F6',
+    backgroundColor: 'rgba(147, 197, 253, 0.18)',
   },
   menuButtonText: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 18,
   },
   loginContainer: {
@@ -3111,13 +3131,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   helperText: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
   },
   helperSubtext: {
-    color: '#88C0D0',
+    color: '#3B82F6',
     fontSize: 13,
     lineHeight: 18,
     textAlign: 'center',
@@ -3151,7 +3171,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   appsTitle: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 24,
     fontWeight: '800',
   },
@@ -3159,14 +3179,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   appsSubtitle: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 13,
     marginBottom: 14,
   },
@@ -3185,16 +3205,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   sectionTitle: {
-    color: '#88C0D0',
+    color: '#3B82F6',
     fontSize: 16,
     fontWeight: '700',
   },
   appTile: {
     width: '47%',
-    backgroundColor: 'rgba(37, 42, 52, 0.5)',
+    backgroundColor: 'rgba(20, 33, 61, 0.5)',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(236, 239, 244, 0.08)',
+    borderColor: 'rgba(224, 236, 255, 0.08)',
     paddingVertical: 16,
     paddingHorizontal: 12,
     alignItems: 'center',
@@ -3216,9 +3236,9 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(23, 26, 33, 0.7)',
+    backgroundColor: 'rgba(10, 17, 40, 0.7)',
     borderWidth: 1,
-    borderColor: 'rgba(236, 239, 244, 0.1)',
+    borderColor: 'rgba(224, 236, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
@@ -3235,9 +3255,9 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(23, 26, 33, 0.7)',
+    backgroundColor: 'rgba(10, 17, 40, 0.7)',
     borderWidth: 1,
-    borderColor: 'rgba(236, 239, 244, 0.1)',
+    borderColor: 'rgba(224, 236, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3251,8 +3271,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    backgroundColor: 'rgba(136, 192, 208, 0.12)',
-    borderColor: 'rgba(136, 192, 208, 0.4)',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    borderColor: 'rgba(59, 130, 246, 0.4)',
   },
   tileIconImage: {
     width: 40,
@@ -3260,7 +3280,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   tileName: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',
@@ -3272,36 +3292,36 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyAppsText: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 18,
     fontWeight: '600',
   },
   emptyAppsSubtext: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 13,
   },
   addAppForm: {
-    backgroundColor: 'rgba(37, 42, 52, 0.55)',
+    backgroundColor: 'rgba(20, 33, 61, 0.55)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     padding: 16,
     marginBottom: 16,
     gap: 12,
   },
   addAppTitle: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 4,
   },
   appInput: {
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     padding: 14,
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 15,
   },
   appTypeSelector: {
@@ -3316,21 +3336,21 @@ const styles = StyleSheet.create({
     gap: 6,
     padding: 12,
     borderRadius: 10,
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
   },
   appTypeButtonActive: {
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
-    borderColor: '#88C0D0',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
+    borderColor: '#3B82F6',
   },
   appTypeText: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 14,
     fontWeight: '600',
   },
   appTypeTextActive: {
-    color: '#88C0D0',
+    color: '#3B82F6',
   },
   addAppButtons: {
     flexDirection: 'row',
@@ -3344,20 +3364,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
   },
   cancelButtonText: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 15,
     fontWeight: '700',
   },
   saveButton: {
-    backgroundColor: '#A3BE8C',
+    backgroundColor: '#22C55E',
   },
   saveButtonText: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -3370,7 +3390,7 @@ const styles = StyleSheet.create({
     height: 240,
     borderRadius: 120,
     borderWidth: 2,
-    borderColor: 'rgba(236, 239, 244, 0.14)',
+    borderColor: 'rgba(224, 236, 255, 0.14)',
     position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -3382,9 +3402,9 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(76, 86, 106, 0.14)',
+    backgroundColor: 'rgba(147, 197, 253, 0.14)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -3409,7 +3429,7 @@ const styles = StyleSheet.create({
     top: 88,
   },
   dpadButtonText: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 28,
     fontWeight: '800',
   },
@@ -3420,18 +3440,18 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: 'rgba(136, 192, 208, 0.35)',
+    backgroundColor: 'rgba(59, 130, 246, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#88C0D0',
+    shadowColor: '#3B82F6',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
     shadowRadius: 10,
     borderWidth: 2,
-    borderColor: '#81A1C1',
+    borderColor: '#60A5FA',
   },
   okButtonText: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -3473,7 +3493,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   controlLabel: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 11,
     fontWeight: '600',
   },
@@ -3486,7 +3506,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 10,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3494,22 +3514,22 @@ const styles = StyleSheet.create({
     flex: 1,
     width: 12,
     borderRadius: 6,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     overflow: 'hidden',
     justifyContent: 'flex-end',
   },
   controlTrackFill: {
     width: '100%',
-    backgroundColor: '#A3BE8C',
+    backgroundColor: '#22C55E',
     borderRadius: 6,
   },
   sliderTrackVertical: {
     flex: 1,
     width: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(42, 47, 58, 0.4)',
+    backgroundColor: 'rgba(27, 47, 87, 0.4)',
     borderWidth: 1,
-    borderColor: 'rgba(236, 239, 244, 0.1)',
+    borderColor: 'rgba(224, 236, 255, 0.1)',
     overflow: 'hidden',
     justifyContent: 'flex-end',
     alignItems: 'center',
@@ -3531,7 +3551,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#ECEFF4',
+    backgroundColor: '#F8FAFC',
     borderWidth: 3,
     marginBottom: -14,
     shadowOffset: { width: 0, height: 0 },
@@ -3539,7 +3559,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   controlValue: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
@@ -3549,7 +3569,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   groupLabel: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -3577,14 +3597,14 @@ const styles = StyleSheet.create({
   sliderTrack: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     overflow: 'hidden',
   },
   sliderFill: {
     height: '100%',
-    backgroundColor: '#A3BE8C',
+    backgroundColor: '#22C55E',
     borderRadius: 3,
   },
   sliderButtons: {
@@ -3595,9 +3615,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     borderRadius: 10,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3605,15 +3625,15 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 64,
     borderRadius: 16,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   muteButton: {
-    backgroundColor: '#88C0D0',
-    borderColor: '#88C0D0',
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
     flex: 1.2,
   },
   muteButtonFull: {
@@ -3623,12 +3643,12 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#88C0D0',
+    backgroundColor: '#3B82F6',
     borderWidth: 1,
-    borderColor: '#88C0D0',
+    borderColor: '#3B82F6',
   },
   muteButtonText: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -3645,67 +3665,67 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 36,
     borderRadius: 8,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   brightnessPresetButtonActive: {
-    backgroundColor: '#EBCB8B',
-    borderColor: '#EBCB8B',
+    backgroundColor: '#F59E0B',
+    borderColor: '#F59E0B',
   },
   brightnessPresetText: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 13,
     fontWeight: '600',
   },
   brightnessPresetTextActive: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontWeight: '700',
   },
   playButtonSmall: {
-    backgroundColor: '#A3BE8C',
-    borderColor: '#A3BE8C',
+    backgroundColor: '#22C55E',
+    borderColor: '#22C55E',
   },
   playButtonTextSmall: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontWeight: '700',
   },
   actionButtonSmall: {
     flex: 1,
     minHeight: 56,
     borderRadius: 14,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
   actionButtonText: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 13,
     fontWeight: '600',
   },
   closeButtonSmall: {
-    backgroundColor: '#BF616A',
-    borderColor: '#BF616A',
+    backgroundColor: '#EF4444',
+    borderColor: '#EF4444',
   },
   closeButtonTextSmall: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontWeight: '700',
   },
   recordingButton: {
-    backgroundColor: '#BF616A',
-    borderColor: '#BF616A',
+    backgroundColor: '#EF4444',
+    borderColor: '#EF4444',
   },
   fullscreenButtonSmall: {
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
   },
   fullscreenButtonTextSmall: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontWeight: '600',
   },
   buttonIcon: {
@@ -3724,9 +3744,9 @@ const styles = StyleSheet.create({
     minHeight: 140,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
-    color: '#D8DEE9',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
+    color: '#9FB3D9',
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
@@ -3745,24 +3765,24 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 54,
     borderRadius: 12,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
   keyButtonText: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 13,
     fontWeight: '600',
   },
   modifierButtonActive: {
-    backgroundColor: 'rgba(136, 192, 208, 0.22)',
-    borderColor: '#88C0D0',
+    backgroundColor: 'rgba(59, 130, 246, 0.22)',
+    borderColor: '#3B82F6',
   },
   modifierButtonTextActive: {
-    color: '#88C0D0',
+    color: '#3B82F6',
   },
   touchpadContainer: {
     flex: 1,
@@ -3778,8 +3798,8 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -3793,12 +3813,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   touchpadText: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 24,
     fontWeight: '700',
   },
   touchpadHint: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 13,
   },
   scrollBar: {
@@ -3811,9 +3831,9 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 10,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3821,9 +3841,9 @@ const styles = StyleSheet.create({
     flex: 1,
     width: 50,
     borderRadius: 10,
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
   },
   touchpadButtons: {
     flexDirection: 'row',
@@ -3833,15 +3853,15 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 56,
     borderRadius: 14,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
   touchpadButtonText: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -3870,15 +3890,15 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tabItemActive: {
-    backgroundColor: 'rgba(136, 192, 208, 0.16)',
+    backgroundColor: 'rgba(59, 130, 246, 0.16)',
   },
   tabItemText: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 12,
     fontWeight: '600',
   },
   tabItemTextActive: {
-    color: '#81A1C1',
+    color: '#60A5FA',
     fontWeight: '700',
   },
   addressRow: {
@@ -3894,15 +3914,15 @@ const styles = StyleSheet.create({
   input: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
-    color: '#D8DEE9',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
+    color: '#9FB3D9',
     paddingHorizontal: 16,
     paddingVertical: 13,
     fontSize: 15,
   },
   formSectionLabel: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.4,
@@ -3916,30 +3936,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   primaryButton: {
-    backgroundColor: '#A3BE8C',
+    backgroundColor: '#22C55E',
   },
   primaryButtonText: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 16,
     fontWeight: '700',
   },
   secondaryButton: {
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: '#88C0D0',
+    borderColor: '#3B82F6',
   },
   secondaryButtonText: {
-    color: '#88C0D0',
+    color: '#3B82F6',
     fontSize: 16,
     fontWeight: '700',
   },
   ghostButton: {
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
   },
   ghostButtonText: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -3949,7 +3969,7 @@ const styles = StyleSheet.create({
   },
   menuOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(23, 26, 33, 0.55)',
+    backgroundColor: 'rgba(10, 17, 40, 0.55)',
     justifyContent: 'flex-start',
     paddingTop: 80,
     paddingHorizontal: 20,
@@ -3973,16 +3993,16 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
   },
   menuHeaderTitle: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 20,
     fontWeight: '700',
   },
   menuDivider: {
     height: 1,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
   },
   menuSection: {
     paddingHorizontal: 16,
@@ -3990,7 +4010,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   menuSectionTitle: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -4004,13 +4024,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   activeBadge: {
-    backgroundColor: '#A3BE8C',
+    backgroundColor: '#22C55E',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   activeBadgeText: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -4021,35 +4041,35 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
   systemRowActive: {
-    borderColor: '#A3BE8C',
-    backgroundColor: 'rgba(163, 190, 140, 0.14)',
+    borderColor: '#22C55E',
+    backgroundColor: 'rgba(34, 197, 94, 0.14)',
   },
   systemRowText: {
     flex: 1,
     gap: 2,
   },
   systemName: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 15,
     fontWeight: '700',
   },
   systemMeta: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 12,
   },
   systemBadge: {
-    color: '#A3BE8C',
+    color: '#22C55E',
     fontSize: 12,
     fontWeight: '700',
   },
   systemSwapLabel: {
-    color: '#88C0D0',
+    color: '#3B82F6',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -4063,27 +4083,27 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   menuItemPressed: {
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
   },
   menuItemText: {
-    color: '#88C0D0',
+    color: '#3B82F6',
     fontSize: 15,
     fontWeight: '600',
   },
   menuItemDangerText: {
-    color: '#BF616A',
+    color: '#EF4444',
     fontSize: 15,
     fontWeight: '600',
   },
   menuItemWarningText: {
-    color: '#EBCB8B',
+    color: '#F59E0B',
     fontSize: 15,
     fontWeight: '600',
   },
   editorOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(23, 26, 33, 0.55)',
+    backgroundColor: 'rgba(10, 17, 40, 0.55)',
   },
   editorSheet: {
     width: '100%',
@@ -4095,12 +4115,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   editorTitle: {
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontSize: 22,
     fontWeight: '800',
   },
   editorSubtitle: {
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 4,
@@ -4111,18 +4131,18 @@ const styles = StyleSheet.create({
   channelCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(37, 42, 52, 0.55)',
+    backgroundColor: 'rgba(20, 33, 61, 0.55)',
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
     gap: 14,
   },
   channelIconContainer: {
     width: 56,
     height: 56,
     borderRadius: 12,
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -4132,22 +4152,22 @@ const styles = StyleSheet.create({
   },
   channelNumber: {
     fontSize: 13,
-    color: '#88C0D0',
+    color: '#3B82F6',
     fontWeight: '600',
   },
   channelName: {
     fontSize: 17,
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontWeight: '600',
   },
   channelMeta: {
     fontSize: 13,
-    color: '#D8DEE9',
+    color: '#9FB3D9',
   },
   // Settings Modals
   settingsOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(23, 26, 33, 0.55)',
+    backgroundColor: 'rgba(10, 17, 40, 0.55)',
     justifyContent: 'flex-end',
   },
   settingsSheetWrap: {
@@ -4166,13 +4186,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(76, 86, 106, 0.18)',
+    borderBottomColor: 'rgba(147, 197, 253, 0.18)',
     gap: 12,
   },
   settingsTitle: {
     flex: 1,
     fontSize: 20,
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontWeight: '600',
   },
   settingsCloseButton: {
@@ -4184,7 +4204,7 @@ const styles = StyleSheet.create({
   },
   settingsSectionTitle: {
     fontSize: 16,
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     fontWeight: '600',
     marginBottom: 12,
   },
@@ -4199,7 +4219,7 @@ const styles = StyleSheet.create({
   },
   settingsLoadingText: {
     fontSize: 16,
-    color: '#D8DEE9',
+    color: '#9FB3D9',
   },
   settingsEmpty: {
     alignItems: 'center',
@@ -4209,38 +4229,38 @@ const styles = StyleSheet.create({
   },
   settingsEmptyText: {
     fontSize: 16,
-    color: '#D8DEE9',
+    color: '#9FB3D9',
   },
   settingsInput: {
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
-    color: '#ECEFF4',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
+    color: '#F8FAFC',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
   },
   settingsMessage: {
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
   },
   settingsMessageSuccess: {
-    backgroundColor: 'rgba(163, 190, 140, 0.2)',
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
   },
   settingsMessageError: {
-    backgroundColor: 'rgba(191, 97, 106, 0.2)',
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
   },
   settingsMessageText: {
     fontSize: 14,
-    color: '#ECEFF4',
+    color: '#F8FAFC',
   },
   settingsActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     padding: 14,
     borderRadius: 8,
     gap: 8,
@@ -4248,7 +4268,7 @@ const styles = StyleSheet.create({
   },
   settingsActionButtonText: {
     fontSize: 16,
-    color: '#88C0D0',
+    color: '#3B82F6',
     fontWeight: '600',
   },
   // WiFi
@@ -4256,16 +4276,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
     padding: 14,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
   },
   networkItemActive: {
-    borderColor: '#A3BE8C',
-    backgroundColor: 'rgba(163, 190, 140, 0.1)',
+    borderColor: '#22C55E',
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
   },
   networkItemLeft: {
     flexDirection: 'row',
@@ -4280,24 +4300,24 @@ const styles = StyleSheet.create({
   },
   networkName: {
     fontSize: 16,
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontWeight: '500',
   },
   networkSignal: {
     fontSize: 14,
-    color: '#D8DEE9',
+    color: '#9FB3D9',
   },
   // Bluetooth
   bluetoothItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
     padding: 14,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
   },
   bluetoothItemLeft: {
     flexDirection: 'row',
@@ -4310,12 +4330,12 @@ const styles = StyleSheet.create({
   },
   bluetoothName: {
     fontSize: 16,
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontWeight: '500',
   },
   bluetoothMac: {
     fontSize: 12,
-    color: '#D8DEE9',
+    color: '#9FB3D9',
   },
   bluetoothActions: {
     flexDirection: 'row',
@@ -4323,19 +4343,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bluetoothConnectButton: {
-    backgroundColor: '#A3BE8C',
+    backgroundColor: '#22C55E',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
   },
   bluetoothConnectText: {
     fontSize: 14,
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontWeight: '600',
   },
   bluetoothConnectedText: {
     fontSize: 14,
-    color: '#A3BE8C',
+    color: '#22C55E',
     fontWeight: '600',
   },
   bluetoothRemoveButton: {
@@ -4346,16 +4366,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(23, 26, 33, 0.6)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
     padding: 14,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
   },
   speakerItemActive: {
-    borderColor: '#A3BE8C',
-    backgroundColor: 'rgba(163, 190, 140, 0.1)',
+    borderColor: '#22C55E',
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
   },
   speakerItemLeft: {
     flexDirection: 'row',
@@ -4365,23 +4385,23 @@ const styles = StyleSheet.create({
   },
   speakerName: {
     fontSize: 16,
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontWeight: '500',
   },
   speakerActiveBadge: {
-    backgroundColor: '#A3BE8C',
+    backgroundColor: '#22C55E',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   speakerActiveText: {
     fontSize: 12,
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     fontWeight: '600',
   },
   settingsSubtitle: {
     fontSize: 14,
-    color: '#D8DEE9',
+    color: '#9FB3D9',
     marginBottom: 16,
   },
   appItem: {
@@ -4389,7 +4409,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderRadius: 12,
     marginBottom: 8,
   },
@@ -4413,27 +4433,27 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   appItemAdded: {
-    backgroundColor: 'rgba(163, 190, 140, 0.14)',
+    backgroundColor: 'rgba(34, 197, 94, 0.14)',
     borderWidth: 1,
-    borderColor: '#A3BE8C',
+    borderColor: '#22C55E',
   },
   appRemoveButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: 'rgba(191, 97, 106, 0.1)',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
   addAppCard: {
-    backgroundColor: 'rgba(37, 42, 52, 0.55)',
+    backgroundColor: 'rgba(20, 33, 61, 0.55)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
   },
   addAppCardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#ECEFF4',
+    color: '#F8FAFC',
     marginBottom: 12,
   },
   addAppChoiceButtons: {
@@ -4449,21 +4469,21 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: 'rgba(42, 47, 58, 0.45)',
+    backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(76, 86, 106, 0.18)',
+    borderColor: 'rgba(147, 197, 253, 0.18)',
   },
   addAppChoiceButtonActive: {
-    backgroundColor: 'rgba(136, 192, 208, 0.15)',
-    borderColor: '#88C0D0',
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    borderColor: '#3B82F6',
   },
   addAppChoiceButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#D8DEE9',
+    color: '#9FB3D9',
   },
   addAppChoiceButtonTextActive: {
-    color: '#88C0D0',
+    color: '#3B82F6',
   },
 });
