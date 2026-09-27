@@ -130,7 +130,7 @@ const parseStoredSystems = (storedValue: string | null): SavedSystem[] => {
 // plain tint instead of a literal blur.
 function GlassSurface({
   style,
-  tint = 'rgba(59, 66, 82, 0.55)',
+  tint = 'rgba(37, 42, 52, 0.55)',
   children,
 }: {
   style?: StyleProp<ViewStyle>;
@@ -1220,7 +1220,7 @@ export default function RemoteScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={['#2E3440', '#3B4252', '#2E3440']}
+        colors={['#171A21', '#252A34', '#171A21']}
         locations={[0, 0.55, 1]}
         style={styles.ambientBackground}
       />
@@ -1243,7 +1243,7 @@ export default function RemoteScreen() {
           </View>
         ) : null}
 
-        <GlassSurface style={styles.header} tint="rgba(59, 66, 82, 0.72)">
+        <GlassSurface style={styles.header} tint="rgba(37, 42, 52, 0.72)">
           <View style={styles.headerLeft}>
             <View
               style={[
@@ -1410,7 +1410,7 @@ export default function RemoteScreen() {
                     <View style={styles.centerControlColumn}>
                       {/* D-Pad */}
                       <View style={styles.dpadContainer}>
-                        <GlassSurface style={styles.dpadCircle} tint="rgba(59, 66, 82, 0.72)">
+                        <GlassSurface style={styles.dpadCircle} tint="rgba(37, 42, 52, 0.72)">
                           {/* Top Button */}
                           <Pressable
                             style={({ pressed }) => [styles.dpadButton, styles.dpadTop, pressed && styles.pressed]}
@@ -2140,7 +2140,7 @@ export default function RemoteScreen() {
 
       {!showLoginScreen && (
         <View style={styles.tabBarContainer}>
-          <GlassSurface style={styles.tabBar} tint="rgba(59, 66, 82, 0.72)">
+          <GlassSurface style={styles.tabBar} tint="rgba(37, 42, 52, 0.72)">
             {tabItems.map((tab) => (
               <Pressable
                 key={tab.key}
@@ -2178,7 +2178,7 @@ export default function RemoteScreen() {
         onRequestClose={() => setIsMenuVisible(false)}>
         <Pressable style={styles.menuOverlay} onPress={() => setIsMenuVisible(false)}>
           <Pressable onPress={() => undefined} style={styles.menuSheetWrap}>
-          <GlassSurface style={styles.menuSheet} tint="rgba(59, 66, 82, 0.88)">
+          <GlassSurface style={styles.menuSheet} tint="rgba(37, 42, 52, 0.88)">
             {/* Header */}
             <View style={styles.menuHeader}>
               <Ionicons name="settings" size={24} color="#88C0D0" />
@@ -2372,7 +2372,7 @@ export default function RemoteScreen() {
             resetEditorToActiveSystem();
           }}>
           <Pressable onPress={() => undefined}>
-          <GlassSurface style={styles.editorSheet} tint="rgba(59, 66, 82, 0.88)">
+          <GlassSurface style={styles.editorSheet} tint="rgba(37, 42, 52, 0.88)">
             <Text style={styles.editorTitle}>
               {editingSystemId ? 'Edit system' : 'Add system'}
             </Text>
@@ -2457,7 +2457,7 @@ export default function RemoteScreen() {
         onRequestClose={() => setIsWifiVisible(false)}>
         <Pressable style={styles.settingsOverlay} onPress={() => setIsWifiVisible(false)}>
           <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
-          <GlassSurface style={styles.settingsSheet} tint="rgba(59, 66, 82, 0.88)">
+          <GlassSurface style={styles.settingsSheet} tint="rgba(37, 42, 52, 0.88)">
             <View style={styles.settingsHeader}>
               <Ionicons name="wifi" size={24} color="#88C0D0" />
               <Text style={styles.settingsTitle}>Wi-Fi Settings</Text>
@@ -2569,7 +2569,7 @@ export default function RemoteScreen() {
         onRequestClose={() => setIsBluetoothVisible(false)}>
         <Pressable style={styles.settingsOverlay} onPress={() => setIsBluetoothVisible(false)}>
           <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
-          <GlassSurface style={styles.settingsSheet} tint="rgba(59, 66, 82, 0.88)">
+          <GlassSurface style={styles.settingsSheet} tint="rgba(37, 42, 52, 0.88)">
             <View style={styles.settingsHeader}>
               <Ionicons name="bluetooth" size={24} color="#88C0D0" />
               <Text style={styles.settingsTitle}>Bluetooth Settings</Text>
@@ -2669,7 +2669,7 @@ export default function RemoteScreen() {
         onRequestClose={() => setIsSoundVisible(false)}>
         <Pressable style={styles.settingsOverlay} onPress={() => setIsSoundVisible(false)}>
           <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
-          <GlassSurface style={styles.settingsSheet} tint="rgba(59, 66, 82, 0.88)">
+          <GlassSurface style={styles.settingsSheet} tint="rgba(37, 42, 52, 0.88)">
             <View style={styles.settingsHeader}>
               <Ionicons name="volume-high" size={24} color="#88C0D0" />
               <Text style={styles.settingsTitle}>Sound Settings</Text>
@@ -2757,7 +2757,7 @@ export default function RemoteScreen() {
           style={styles.editorOverlay}
           onPress={() => setIsSaveMacroVisible(false)}>
           <Pressable onPress={() => undefined}>
-          <GlassSurface style={styles.editorSheet} tint="rgba(59, 66, 82, 0.88)">
+          <GlassSurface style={styles.editorSheet} tint="rgba(37, 42, 52, 0.88)">
             <Text style={styles.editorTitle}>{editingMacro ? 'Rename Macro' : 'Save Macro'}</Text>
             <Text style={styles.editorSubtitle}>
               {editingMacro ? 'Enter a new name for this macro.' : 'Give this recorded sequence of actions a name.'}
@@ -2956,7 +2956,7 @@ function AppTile({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#2E3440',
+    backgroundColor: '#171A21',
   },
   ambientBackground: {
     ...StyleSheet.absoluteFillObject,
@@ -2985,7 +2985,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   demoBannerText: {
-    color: '#2E3440',
+    color: '#171A21',
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.4,
@@ -3088,7 +3088,7 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3159,7 +3159,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
@@ -3191,7 +3191,7 @@ const styles = StyleSheet.create({
   },
   appTile: {
     width: '47%',
-    backgroundColor: 'rgba(59, 66, 82, 0.5)',
+    backgroundColor: 'rgba(37, 42, 52, 0.5)',
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(236, 239, 244, 0.08)',
@@ -3216,7 +3216,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(46, 52, 64, 0.7)',
+    backgroundColor: 'rgba(23, 26, 33, 0.7)',
     borderWidth: 1,
     borderColor: 'rgba(236, 239, 244, 0.1)',
     alignItems: 'center',
@@ -3235,7 +3235,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(46, 52, 64, 0.7)',
+    backgroundColor: 'rgba(23, 26, 33, 0.7)',
     borderWidth: 1,
     borderColor: 'rgba(236, 239, 244, 0.1)',
     alignItems: 'center',
@@ -3281,7 +3281,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   addAppForm: {
-    backgroundColor: 'rgba(59, 66, 82, 0.55)',
+    backgroundColor: 'rgba(37, 42, 52, 0.55)',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
@@ -3296,7 +3296,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   appInput: {
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
@@ -3316,12 +3316,12 @@ const styles = StyleSheet.create({
     gap: 6,
     padding: 12,
     borderRadius: 10,
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   appTypeButtonActive: {
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderColor: '#88C0D0',
   },
   appTypeText: {
@@ -3344,7 +3344,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
   },
@@ -3486,7 +3486,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 10,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3494,7 +3494,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: 12,
     borderRadius: 6,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     overflow: 'hidden',
     justifyContent: 'flex-end',
   },
@@ -3507,7 +3507,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(67, 76, 94, 0.4)',
+    backgroundColor: 'rgba(42, 47, 58, 0.4)',
     borderWidth: 1,
     borderColor: 'rgba(236, 239, 244, 0.1)',
     overflow: 'hidden',
@@ -3577,7 +3577,7 @@ const styles = StyleSheet.create({
   sliderTrack: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
     overflow: 'hidden',
@@ -3595,7 +3595,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     borderRadius: 10,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
@@ -3605,7 +3605,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 64,
     borderRadius: 16,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
@@ -3645,7 +3645,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 36,
     borderRadius: 8,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
@@ -3676,7 +3676,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 56,
     borderRadius: 14,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
@@ -3701,7 +3701,7 @@ const styles = StyleSheet.create({
     borderColor: '#BF616A',
   },
   fullscreenButtonSmall: {
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   fullscreenButtonTextSmall: {
@@ -3725,7 +3725,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     color: '#D8DEE9',
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -3745,7 +3745,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 54,
     borderRadius: 12,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
@@ -3779,7 +3779,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderColor: 'rgba(76, 86, 106, 0.18)',
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -3811,7 +3811,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 10,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
@@ -3821,7 +3821,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: 50,
     borderRadius: 10,
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
   },
@@ -3833,7 +3833,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 56,
     borderRadius: 14,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
     alignItems: 'center',
@@ -3895,7 +3895,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     color: '#D8DEE9',
     paddingHorizontal: 16,
     paddingVertical: 13,
@@ -3924,7 +3924,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   secondaryButton: {
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: '#88C0D0',
   },
@@ -3934,7 +3934,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   ghostButton: {
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
   },
@@ -3949,7 +3949,7 @@ const styles = StyleSheet.create({
   },
   menuOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(46, 52, 64, 0.55)',
+    backgroundColor: 'rgba(23, 26, 33, 0.55)',
     justifyContent: 'flex-start',
     paddingTop: 80,
     paddingHorizontal: 20,
@@ -3973,7 +3973,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
   },
   menuHeaderTitle: {
     color: '#ECEFF4',
@@ -3982,7 +3982,7 @@ const styles = StyleSheet.create({
   },
   menuDivider: {
     height: 1,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
   },
   menuSection: {
     paddingHorizontal: 16,
@@ -4022,7 +4022,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
@@ -4063,7 +4063,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   menuItemPressed: {
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
   },
   menuItemText: {
     color: '#88C0D0',
@@ -4083,7 +4083,7 @@ const styles = StyleSheet.create({
   editorOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(46, 52, 64, 0.55)',
+    backgroundColor: 'rgba(23, 26, 33, 0.55)',
   },
   editorSheet: {
     width: '100%',
@@ -4111,7 +4111,7 @@ const styles = StyleSheet.create({
   channelCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(59, 66, 82, 0.55)',
+    backgroundColor: 'rgba(37, 42, 52, 0.55)',
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
@@ -4122,7 +4122,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 12,
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -4147,7 +4147,7 @@ const styles = StyleSheet.create({
   // Settings Modals
   settingsOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(46, 52, 64, 0.55)',
+    backgroundColor: 'rgba(23, 26, 33, 0.55)',
     justifyContent: 'flex-end',
   },
   settingsSheetWrap: {
@@ -4212,7 +4212,7 @@ const styles = StyleSheet.create({
     color: '#D8DEE9',
   },
   settingsInput: {
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     color: '#ECEFF4',
     borderRadius: 8,
     padding: 12,
@@ -4221,7 +4221,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(76, 86, 106, 0.18)',
   },
   settingsMessage: {
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
@@ -4240,7 +4240,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     padding: 14,
     borderRadius: 8,
     gap: 8,
@@ -4256,7 +4256,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     padding: 14,
     borderRadius: 8,
     marginBottom: 8,
@@ -4292,7 +4292,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     padding: 14,
     borderRadius: 8,
     marginBottom: 8,
@@ -4346,7 +4346,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(46, 52, 64, 0.6)',
+    backgroundColor: 'rgba(23, 26, 33, 0.6)',
     padding: 14,
     borderRadius: 8,
     marginBottom: 8,
@@ -4389,7 +4389,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderRadius: 12,
     marginBottom: 8,
   },
@@ -4423,7 +4423,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(191, 97, 106, 0.1)',
   },
   addAppCard: {
-    backgroundColor: 'rgba(59, 66, 82, 0.55)',
+    backgroundColor: 'rgba(37, 42, 52, 0.55)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -4449,7 +4449,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: 'rgba(67, 76, 94, 0.45)',
+    backgroundColor: 'rgba(42, 47, 58, 0.45)',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(76, 86, 106, 0.18)',
