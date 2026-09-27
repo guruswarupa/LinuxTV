@@ -60,6 +60,18 @@ native_apps:
   - name: "Proton VPN"
     cmd: "protonvpn-app"
     icon: "icons/protonvpn.png"
+  - name: "Brave"
+    cmd: "brave-browser"
+    icon: "icons/brave.png"
+  - name: "Kitty"
+    cmd: "kitty"
+    icon: "icons/kitty.png"
+  - name: "qBittorrent"
+    cmd: "qbittorrent"
+    icon: "icons/qbittorrent.png"
+  - name: "Files"
+    cmd: "pcmanfm"
+    icon: "icons/files.png"
 websocket:
   host: "0.0.0.0"
   port: 8765

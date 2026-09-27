@@ -71,6 +71,13 @@ kodi-inputstream-adaptive
 kodi-inputstream-ffmpegdirect
 kodi-pvr-iptvsimple
 vlc
+qbittorrent
+
+# Terminal
+kitty
+
+# File manager
+pcmanfm
 
 # Python dependencies for Kodi addons
 python3-requests
