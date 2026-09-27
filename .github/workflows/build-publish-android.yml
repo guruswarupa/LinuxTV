@@ -115,16 +115,6 @@ jobs:
         working-directory: linuxtvremote
         run: npm ci
 
-      # npm's cache-restore path on GitHub Actions runners has been known to
-      # drop the executable bit off prebuilt binaries it extracts -- Hermes
-      # ships hermesc this way, and losing +x makes Gradle's
-      # createBundleReleaseJsAndAssets fail with "A problem occurred starting
-      # process 'command .../hermesc'". Reassert it explicitly rather than
-      # relying on npm to have preserved it.
-      - name: Ensure Hermes compiler is executable
-        working-directory: linuxtvremote
-        run: chmod +x node_modules/react-native/sdks/hermesc/*/hermesc
-
       - name: Decode release keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
