@@ -132,7 +132,7 @@ REMOTE_POINTER_TARGET_CACHE_SECONDS = 1.0
 DEFAULT_CONFIG = {
     "native_apps": [
         {"name": "Kodi", "cmd": "kodi", "icon": "icons/kodi.png"},
-        {"name": "Stremio", "cmd": "stremio", "icon": "icons/stremio.png"},
+        {"name": "Stremio", "cmd": "stremio-qt5", "icon": "icons/stremio.png"},
         {"name": "VLC", "cmd": "vlc", "icon": "icons/vlc.png"},
     ],
     "web_apps": [

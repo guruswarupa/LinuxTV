@@ -1240,7 +1240,7 @@ export default function RemoteScreen() {
           </View>
         ) : null}
         {isReplaying ? (
-          <View style={[styles.demoBanner, { backgroundColor: '#3B82F6' }]}>
+          <View style={[styles.demoBanner, { backgroundColor: '#2563EB' }]}>
             <Ionicons name="play-circle" size={16} color="#F8FAFC" />
             <Text style={[styles.demoBannerText, { color: '#F8FAFC' }]}>REPLAYING MACRO</Text>
           </View>
@@ -1294,7 +1294,7 @@ export default function RemoteScreen() {
               ]}
               onPress={() => setIsMenuVisible((current) => !current)}
               hitSlop={6}>
-              <Ionicons name="settings-sharp" size={20} color={isMenuVisible ? '#60A5FA' : '#9FB3D9'} />
+              <Ionicons name="settings-sharp" size={20} color={isMenuVisible ? '#3B82F6' : '#9FB3D9'} />
             </Pressable>
           ) : null}
         </GlassSurface>
@@ -1302,7 +1302,7 @@ export default function RemoteScreen() {
         {showLoginScreen ? (
           <View style={styles.loginContainer}>
             <View style={styles.loginHeader}>
-              <Ionicons name="tv" size={64} color="#3B82F6" />
+              <Ionicons name="tv" size={64} color="#2563EB" />
               <Text style={styles.helperText}>Add your first LinuxTV system</Text>
               <Text style={styles.helperSubtext}>
                 Save multiple systems here, then switch between them from the settings gear.
@@ -1666,12 +1666,12 @@ export default function RemoteScreen() {
                       <Pressable
                         style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed]}
                         onPress={fetchApps}>
-                        <Ionicons name="refresh" size={20} color="#3B82F6" />
+                        <Ionicons name="refresh" size={20} color="#2563EB" />
                       </Pressable>
                       <Pressable
                         style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed]}
                         onPress={showAddApp}>
-                        <Ionicons name="add" size={20} color="#3B82F6" />
+                        <Ionicons name="add" size={20} color="#2563EB" />
                       </Pressable>
                     </View>
                   </View>
@@ -1692,7 +1692,7 @@ export default function RemoteScreen() {
                           <Pressable
                             style={[styles.appTypeButton, newAppType === 'native' && styles.appTypeButtonActive]}
                             onPress={() => setNewAppType('native')}>
-                            <Ionicons name="desktop" size={16} color={newAppType === 'native' ? '#3B82F6' : '#9FB3D9'} />
+                            <Ionicons name="desktop" size={16} color={newAppType === 'native' ? '#2563EB' : '#9FB3D9'} />
                             <Text style={[styles.appTypeText, newAppType === 'native' && styles.appTypeTextActive]}>
                               Native
                             </Text>
@@ -1700,7 +1700,7 @@ export default function RemoteScreen() {
                           <Pressable
                             style={[styles.appTypeButton, newAppType === 'web' && styles.appTypeButtonActive]}
                             onPress={() => setNewAppType('web')}>
-                            <Ionicons name="globe" size={16} color={newAppType === 'web' ? '#3B82F6' : '#9FB3D9'} />
+                            <Ionicons name="globe" size={16} color={newAppType === 'web' ? '#2563EB' : '#9FB3D9'} />
                             <Text style={[styles.appTypeText, newAppType === 'web' && styles.appTypeTextActive]}>
                               Web
                             </Text>
@@ -1747,7 +1747,7 @@ export default function RemoteScreen() {
                     {serverApps.filter(app => app.kind === 'native').length > 0 && (
                       <>
                         <View style={styles.sectionHeader}>
-                          <Ionicons name="desktop" size={18} color="#3B82F6" />
+                          <Ionicons name="desktop" size={18} color="#2563EB" />
                           <Text style={styles.sectionTitle}>Apps</Text>
                         </View>
                         {serverApps
@@ -1770,7 +1770,7 @@ export default function RemoteScreen() {
                     {serverApps.filter(app => app.kind === 'web').length > 0 && (
                       <>
                         <View style={styles.sectionHeader}>
-                          <Ionicons name="globe" size={18} color="#3B82F6" />
+                          <Ionicons name="globe" size={18} color="#2563EB" />
                           <Text style={styles.sectionTitle}>Streaming</Text>
                         </View>
                         {serverApps
@@ -2033,7 +2033,7 @@ export default function RemoteScreen() {
                   {savedMacros.map(macro => (
                     <View key={macro.id} style={styles.systemRow}>
                       <Pressable style={styles.systemRowLeft} onPress={() => replayMacro(macro)}>
-                        <Ionicons name="play-circle" size={24} color="#3B82F6" />
+                        <Ionicons name="play-circle" size={24} color="#2563EB" />
                         <View style={styles.systemRowText}>
                           <Text style={styles.systemName}>{macro.name}</Text>
                           <Text style={styles.systemMeta}>{macro.actions.length} actions</Text>
@@ -2063,7 +2063,7 @@ export default function RemoteScreen() {
                 <View style={styles.touchpadWrapper}>
                   <View style={styles.touchpadSurface} {...touchpadResponder.panHandlers}>
                     <View style={styles.touchpadInner}>
-                      <Ionicons name="hand-left" size={48} color="#3B82F6" />
+                      <Ionicons name="hand-left" size={48} color="#2563EB" />
                       <Text style={styles.touchpadText}>Touchpad</Text>
                       <Text style={styles.touchpadHint}>Tap to click • Drag to move</Text>
                     </View>
@@ -2161,7 +2161,7 @@ export default function RemoteScreen() {
                 <Ionicons
                   name={tab.icon}
                   size={22}
-                  color={activeTab === tab.key ? '#60A5FA' : '#9FB3D9'}
+                  color={activeTab === tab.key ? '#3B82F6' : '#9FB3D9'}
                 />
                 <Text
                   style={[
@@ -2186,7 +2186,7 @@ export default function RemoteScreen() {
           <GlassSurface style={styles.menuSheet} tint="rgba(20, 33, 61, 0.88)">
             {/* Header */}
             <View style={styles.menuHeader}>
-              <Ionicons name="settings" size={24} color="#3B82F6" />
+              <Ionicons name="settings" size={24} color="#2563EB" />
               <Text style={styles.menuHeaderTitle}>Settings</Text>
             </View>
             
@@ -2237,7 +2237,7 @@ export default function RemoteScreen() {
                   style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
                   onPress={openAddSystemEditor}>
                   <View style={styles.menuItemContent}>
-                    <Ionicons name="add-circle" size={20} color="#3B82F6" />
+                    <Ionicons name="add-circle" size={20} color="#2563EB" />
                     <Text style={styles.menuItemText}>Add System</Text>
                   </View>
                 </Pressable>
@@ -2247,7 +2247,7 @@ export default function RemoteScreen() {
                     style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
                     onPress={openEditSystemEditor}>
                     <View style={styles.menuItemContent}>
-                      <Ionicons name="create" size={20} color="#3B82F6" />
+                      <Ionicons name="create" size={20} color="#2563EB" />
                       <Text style={styles.menuItemText}>Edit System</Text>
                     </View>
                   </Pressable>
@@ -2277,7 +2277,7 @@ export default function RemoteScreen() {
                 fetchWifiNetworks();
               }}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="wifi" size={20} color="#3B82F6" />
+                <Ionicons name="wifi" size={20} color="#2563EB" />
                 <Text style={styles.menuItemText}>Wi-Fi</Text>
               </View>
             </Pressable>
@@ -2290,7 +2290,7 @@ export default function RemoteScreen() {
                 fetchBluetoothDevices();
               }}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="bluetooth" size={20} color="#3B82F6" />
+                <Ionicons name="bluetooth" size={20} color="#2563EB" />
                 <Text style={styles.menuItemText}>Bluetooth</Text>
               </View>
             </Pressable>
@@ -2303,7 +2303,7 @@ export default function RemoteScreen() {
                 fetchSoundDevices();
               }}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="volume-high" size={20} color="#3B82F6" />
+                <Ionicons name="volume-high" size={20} color="#2563EB" />
                 <Text style={styles.menuItemText}>Sound</Text>
               </View>
             </Pressable>
@@ -2315,7 +2315,7 @@ export default function RemoteScreen() {
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
               onPress={() => confirmPowerAction('UPDATE')}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="download" size={20} color="#3B82F6" />
+                <Ionicons name="download" size={20} color="#2563EB" />
                 <Text style={styles.menuItemText}>Update System</Text>
               </View>
             </Pressable>
@@ -2464,7 +2464,7 @@ export default function RemoteScreen() {
           <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
           <GlassSurface style={styles.settingsSheet} tint="rgba(20, 33, 61, 0.88)">
             <View style={styles.settingsHeader}>
-              <Ionicons name="wifi" size={24} color="#3B82F6" />
+              <Ionicons name="wifi" size={24} color="#2563EB" />
               <Text style={styles.settingsTitle}>Wi-Fi Settings</Text>
               <Pressable onPress={() => setIsWifiVisible(false)} style={styles.settingsCloseButton}>
                 <Ionicons name="close" size={24} color="#9FB3D9" />
@@ -2476,7 +2476,7 @@ export default function RemoteScreen() {
               
               {wifiLoading ? (
                 <View style={styles.settingsLoading}>
-                  <Ionicons name="sync" size={32} color="#3B82F6" />
+                  <Ionicons name="sync" size={32} color="#2563EB" />
                   <Text style={styles.settingsLoadingText}>Scanning networks...</Text>
                 </View>
               ) : (
@@ -2557,7 +2557,7 @@ export default function RemoteScreen() {
               <Pressable
                 style={styles.settingsActionButton}
                 onPress={fetchWifiNetworks}>
-                <Ionicons name="refresh" size={20} color="#3B82F6" />
+                <Ionicons name="refresh" size={20} color="#2563EB" />
                 <Text style={styles.settingsActionButtonText}>Refresh Networks</Text>
               </Pressable>
             </ScrollView>
@@ -2576,7 +2576,7 @@ export default function RemoteScreen() {
           <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
           <GlassSurface style={styles.settingsSheet} tint="rgba(20, 33, 61, 0.88)">
             <View style={styles.settingsHeader}>
-              <Ionicons name="bluetooth" size={24} color="#3B82F6" />
+              <Ionicons name="bluetooth" size={24} color="#2563EB" />
               <Text style={styles.settingsTitle}>Bluetooth Settings</Text>
               <Pressable onPress={() => setIsBluetoothVisible(false)} style={styles.settingsCloseButton}>
                 <Ionicons name="close" size={24} color="#9FB3D9" />
@@ -2588,7 +2588,7 @@ export default function RemoteScreen() {
               
               {bluetoothLoading ? (
                 <View style={styles.settingsLoading}>
-                  <Ionicons name="sync" size={32} color="#3B82F6" />
+                  <Ionicons name="sync" size={32} color="#2563EB" />
                   <Text style={styles.settingsLoadingText}>Scanning devices...</Text>
                 </View>
               ) : (
@@ -2657,7 +2657,7 @@ export default function RemoteScreen() {
               <Pressable
                 style={styles.settingsActionButton}
                 onPress={fetchBluetoothDevices}>
-                <Ionicons name="refresh" size={20} color="#3B82F6" />
+                <Ionicons name="refresh" size={20} color="#2563EB" />
                 <Text style={styles.settingsActionButtonText}>Refresh Devices</Text>
               </Pressable>
             </ScrollView>
@@ -2676,7 +2676,7 @@ export default function RemoteScreen() {
           <Pressable onPress={() => undefined} style={styles.settingsSheetWrap}>
           <GlassSurface style={styles.settingsSheet} tint="rgba(20, 33, 61, 0.88)">
             <View style={styles.settingsHeader}>
-              <Ionicons name="volume-high" size={24} color="#3B82F6" />
+              <Ionicons name="volume-high" size={24} color="#2563EB" />
               <Text style={styles.settingsTitle}>Sound Settings</Text>
               <Pressable onPress={() => setIsSoundVisible(false)} style={styles.settingsCloseButton}>
                 <Ionicons name="close" size={24} color="#9FB3D9" />
@@ -2688,7 +2688,7 @@ export default function RemoteScreen() {
               
               {soundLoading ? (
                 <View style={styles.settingsLoading}>
-                  <Ionicons name="sync" size={32} color="#3B82F6" />
+                  <Ionicons name="sync" size={32} color="#2563EB" />
                   <Text style={styles.settingsLoadingText}>Loading devices...</Text>
                 </View>
               ) : (
@@ -2743,7 +2743,7 @@ export default function RemoteScreen() {
               <Pressable
                 style={styles.settingsActionButton}
                 onPress={fetchSoundDevices}>
-                <Ionicons name="refresh" size={20} color="#3B82F6" />
+                <Ionicons name="refresh" size={20} color="#2563EB" />
                 <Text style={styles.settingsActionButtonText}>Refresh Devices</Text>
               </Pressable>
             </ScrollView>
@@ -2951,7 +2951,7 @@ function AppTile({
         {app.icon ? (
           <RNImage source={{ uri: app.icon }} style={styles.tileIconImage} resizeMode="contain" />
         ) : (
-          <Ionicons name={fallbackIcon} size={32} color="#3B82F6" />
+          <Ionicons name={fallbackIcon} size={32} color="#2563EB" />
         )}
       </View>
       <Text style={styles.tileName} numberOfLines={1} ellipsizeMode="tail">
@@ -2975,7 +2975,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#2563EB',
     zIndex: 10,
   },
   ambientBackground: {
@@ -3113,7 +3113,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuButtonActive: {
-    borderColor: '#3B82F6',
+    borderColor: '#2563EB',
     backgroundColor: 'rgba(147, 197, 253, 0.18)',
   },
   menuButtonText: {
@@ -3137,7 +3137,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   helperSubtext: {
-    color: '#3B82F6',
+    color: '#2563EB',
     fontSize: 13,
     lineHeight: 18,
     textAlign: 'center',
@@ -3205,7 +3205,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   sectionTitle: {
-    color: '#3B82F6',
+    color: '#2563EB',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -3342,7 +3342,7 @@ const styles = StyleSheet.create({
   },
   appTypeButtonActive: {
     backgroundColor: 'rgba(27, 47, 87, 0.45)',
-    borderColor: '#3B82F6',
+    borderColor: '#2563EB',
   },
   appTypeText: {
     color: '#9FB3D9',
@@ -3350,7 +3350,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   appTypeTextActive: {
-    color: '#3B82F6',
+    color: '#2563EB',
   },
   addAppButtons: {
     flexDirection: 'row',
@@ -3443,12 +3443,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(59, 130, 246, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#3B82F6',
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
     shadowRadius: 10,
     borderWidth: 2,
-    borderColor: '#60A5FA',
+    borderColor: '#3B82F6',
   },
   okButtonText: {
     color: '#F8FAFC',
@@ -3632,8 +3632,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   muteButton: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
     flex: 1.2,
   },
   muteButtonFull: {
@@ -3643,9 +3643,9 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#2563EB',
     borderWidth: 1,
-    borderColor: '#3B82F6',
+    borderColor: '#2563EB',
   },
   muteButtonText: {
     color: '#F8FAFC',
@@ -3779,10 +3779,10 @@ const styles = StyleSheet.create({
   },
   modifierButtonActive: {
     backgroundColor: 'rgba(59, 130, 246, 0.22)',
-    borderColor: '#3B82F6',
+    borderColor: '#2563EB',
   },
   modifierButtonTextActive: {
-    color: '#3B82F6',
+    color: '#2563EB',
   },
   touchpadContainer: {
     flex: 1,
@@ -3898,7 +3898,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tabItemTextActive: {
-    color: '#60A5FA',
+    color: '#3B82F6',
     fontWeight: '700',
   },
   addressRow: {
@@ -3946,10 +3946,10 @@ const styles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: 'rgba(27, 47, 87, 0.45)',
     borderWidth: 1,
-    borderColor: '#3B82F6',
+    borderColor: '#2563EB',
   },
   secondaryButtonText: {
-    color: '#3B82F6',
+    color: '#2563EB',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -4069,7 +4069,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   systemSwapLabel: {
-    color: '#3B82F6',
+    color: '#2563EB',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -4086,7 +4086,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(27, 47, 87, 0.45)',
   },
   menuItemText: {
-    color: '#3B82F6',
+    color: '#2563EB',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -4152,7 +4152,7 @@ const styles = StyleSheet.create({
   },
   channelNumber: {
     fontSize: 13,
-    color: '#3B82F6',
+    color: '#2563EB',
     fontWeight: '600',
   },
   channelName: {
@@ -4268,7 +4268,7 @@ const styles = StyleSheet.create({
   },
   settingsActionButtonText: {
     fontSize: 16,
-    color: '#3B82F6',
+    color: '#2563EB',
     fontWeight: '600',
   },
   // WiFi
@@ -4476,7 +4476,7 @@ const styles = StyleSheet.create({
   },
   addAppChoiceButtonActive: {
     backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderColor: '#3B82F6',
+    borderColor: '#2563EB',
   },
   addAppChoiceButtonText: {
     fontSize: 15,
@@ -4484,6 +4484,6 @@ const styles = StyleSheet.create({
     color: '#9FB3D9',
   },
   addAppChoiceButtonTextActive: {
-    color: '#3B82F6',
+    color: '#2563EB',
   },
 });
