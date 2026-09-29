@@ -151,6 +151,7 @@ export default function RemoteScreen() {
   const [port, setPort] = useState(DEFAULT_PORT);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [pairWithCode, setPairWithCode] = useState(false);
   const [savedSystems, setSavedSystems] = useState<SavedSystem[]>([]);
   const [activeSystemId, setActiveSystemId] = useState<string | null>(null);
   const activeSystem = savedSystems.find((system) => system.id === activeSystemId) ?? null;
@@ -239,7 +240,65 @@ export default function RemoteScreen() {
     setPort(system?.port ?? DEFAULT_PORT);
     setUsername(system?.username ?? '');
     setPassword(system?.password ?? '');
+    setPairWithCode(Boolean(system && !system.username.trim() && system.password));
   };
+
+  const renderCredentialInputs = () => (
+    <>
+      {pairWithCode ? (
+        <TextInput
+          value={password}
+          onChangeText={setPassword}
+          placeholder="6-digit pairing code from the TV"
+          placeholderTextColor="#9FB3D9"
+          keyboardType="number-pad"
+          maxLength={6}
+          autoCorrect={false}
+          style={styles.input}
+        />
+      ) : (
+        <>
+          <TextInput
+            value={username}
+            onChangeText={setUsername}
+            placeholder="Username"
+            placeholderTextColor="#9FB3D9"
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.input}
+          />
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Password"
+            placeholderTextColor="#9FB3D9"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.input}
+          />
+        </>
+      )}
+      <Pressable
+        onPress={() => {
+          setPairWithCode((current) => !current);
+          setUsername('');
+          setPassword('');
+        }}>
+        <Text style={styles.secondaryButtonText}>
+          {pairWithCode
+            ? 'Use username & password instead'
+            : 'No password set? Pair with a code'}
+        </Text>
+      </Pressable>
+      {pairWithCode ? (
+        <Text style={styles.secondaryButtonText}>
+          Open Settings → Remote Login on the TV to see the code.
+        </Text>
+      ) : null}
+    </>
+  );
+
 
   const persistSystems = async (systems: SavedSystem[], nextActiveSystemId?: string | null) => {
     const activeId =
@@ -1339,25 +1398,7 @@ export default function RemoteScreen() {
                 style={[styles.input, styles.portInput]}
               />
             </View>
-            <TextInput
-              value={username}
-              onChangeText={setUsername}
-              placeholder="Username"
-              placeholderTextColor="#9FB3D9"
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.input}
-            />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              placeholderTextColor="#9FB3D9"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.input}
-            />
+            {renderCredentialInputs()}
             <Pressable
               style={[styles.actionButton, styles.primaryButton]}
               onPress={saveSystemAndConnect}>
@@ -2415,25 +2456,7 @@ export default function RemoteScreen() {
                 style={[styles.input, styles.portInput]}
               />
             </View>
-            <TextInput
-              value={username}
-              onChangeText={setUsername}
-              placeholder="Username"
-              placeholderTextColor="#9FB3D9"
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.input}
-            />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              placeholderTextColor="#9FB3D9"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.input}
-            />
+            {renderCredentialInputs()}
             <Pressable
               style={[styles.actionButton, styles.primaryButton]}
               onPress={saveSystemAndConnect}>
