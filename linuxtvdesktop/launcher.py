@@ -25,6 +25,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+import remote_auth
+
 try:
     import yaml
 except ImportError:
@@ -143,7 +145,8 @@ DEFAULT_CONFIG = {
         "username": "",
         "password_hash": "",  # PBKDF2 hash for storage
         "password_salt": "",  # Salt for PBKDF2
-        "password_simple_hash": "",  # SHA-256 of raw password for challenge-response
+        "password_iterations": 0,
+        "tokens": [],  # SHA-256 digests of paired-device tokens
     },
     "websocket": {
         "host": "0.0.0.0",
@@ -734,47 +737,9 @@ def normalize_config(config):
     normalized["web_apps"] = web_apps if isinstance(web_apps, list) else list(DEFAULT_CONFIG["web_apps"])
     normalized["categories"] = categories if isinstance(categories, dict) else dict(DEFAULT_CONFIG["categories"])
     normalized["auth"] = auth if isinstance(auth, dict) else dict(DEFAULT_CONFIG["auth"])
+    normalized["auth"].pop("password_simple_hash", None)  # unsalted secret from older versions
     normalized["auto_launch"] = auto_launch if isinstance(auto_launch, dict) else dict(DEFAULT_CONFIG["auto_launch"])
     return normalized
-
-
-def hash_remote_password(password: str, salt: str = None) -> tuple:
-    """Hash password with PBKDF2-HMAC-SHA256 and random salt.
-    Returns (password_hash, salt) tuple."""
-    if salt is None:
-        salt = secrets.token_hex(16)
-    password_hash = hashlib.pbkdf2_hmac(
-        'sha256',
-        password.encode('utf-8'),
-        salt.encode('utf-8'),
-        100000  # iterations
-    ).hex()
-    return password_hash, salt
-
-
-def remote_auth_enabled(config) -> bool:
-    auth = config.get("auth", {})
-    return bool(auth.get("username", "").strip() and auth.get("password_hash", "").strip())
-
-
-def verify_remote_credentials(config, username: str, password: str) -> bool:
-    auth = config.get("auth", {})
-    expected_user = auth.get("username", "").strip()
-    expected_hash = auth.get("password_hash", "").strip()
-    salt = auth.get("password_salt", "").strip()
-    
-    if not expected_user or not expected_hash:
-        return True
-    
-    # If salt exists, use PBKDF2 verification
-    if salt:
-        computed_hash, _ = hash_remote_password(password, salt)
-        return username.strip() == expected_user and computed_hash == expected_hash
-    
-    # Legacy fallback: old SHA-256 without salt (insecure, but allows migration)
-    logging.warning("Legacy password hash detected without salt. Please update password for better security.")
-    legacy_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
-    return username.strip() == expected_user and legacy_hash == expected_hash
 
 
 def save_config(path: Path, config) -> None:
@@ -1508,108 +1473,91 @@ class WebSocketControlServer(threading.Thread):
         self.loop = None
         self.server = None
         self._stop_event = threading.Event()
-        self._auth_nonces = {}  # Track nonces for challenge-response auth
+        self._rate_limiter = remote_auth.RateLimiter()
+        self.pairing_code = remote_auth.new_pairing_code()
+        logging.warning("Remote pairing code: %s (needed only until a phone is paired)", self.pairing_code)
+
+    async def _send_apps_list(self, websocket):
+        await websocket.send(json.dumps({
+            "status": "ok",
+            "type": "apps_list",
+            "apps": self.window.get_installed_apps(),
+        }))
+
+    async def _grant_access(self, websocket, client, with_token: bool):
+        """Mark the client authenticated; optionally mint a device token for it."""
+        self._rate_limiter.record_success(client)
+        reply = {"status": "auth_ok"}
+        if with_token:
+            reply["token"] = remote_auth.issue_token(self.window.config)
+            try:
+                save_config(self.window.config_path, self.window.config)
+            except Exception:
+                logging.exception("Failed to persist new remote device token")
+        await websocket.send(json.dumps(reply))
+        await self._send_apps_list(websocket)
 
     async def handler(self, websocket, path=None):
-        logging.info("WebSocket connection from %s", websocket.remote_address)
-        authenticated = not remote_auth_enabled(self.window.config)
-        
-        # If no authentication required, send apps list immediately
-        if authenticated:
-            apps_list = self.window.get_installed_apps()
-            await websocket.send(json.dumps({
-                "status": "ok",
-                "type": "apps_list",
-                "apps": apps_list
-            }))
-        
+        remote = websocket.remote_address
+        client = remote[0] if remote else "unknown"
+        logging.info("WebSocket connection from %s", remote)
+        authenticated = False
+
         try:
             async for message in websocket:
-                logging.info("Received remote action: %s", message)
                 try:
                     payload = json.loads(message)
                     message_type = str(payload.get("type", "")).lower()
                 except Exception:
                     payload = {}
                     message_type = ""
+                if message_type not in ("auth", "auth_token", "pair"):
+                    logging.info("Received remote action: %s", message_type or "<invalid>")
 
-                if message_type == "auth":
-                    # Legacy authentication (kept for backward compatibility)
-                    username = str(payload.get("username", ""))
-                    password = str(payload.get("password", ""))
-                    if verify_remote_credentials(self.window.config, username, password):
-                        authenticated = True
-                        await websocket.send(json.dumps({"status": "auth_ok"}))
-                        # Automatically send apps list after successful authentication
-                        apps_list = self.window.get_installed_apps()
+                if message_type in ("auth", "auth_token", "pair"):
+                    wait = self._rate_limiter.blocked(client)
+                    if wait:
                         await websocket.send(json.dumps({
-                            "status": "ok",
-                            "type": "apps_list",
-                            "apps": apps_list
+                            "status": "auth_error",
+                            "error": f"too many attempts, retry in {int(wait) + 1}s",
                         }))
-                    else:
-                        await websocket.send(json.dumps({"status": "auth_error", "error": "invalid credentials"}))
-                    continue
-
-                if message_type == "auth_challenge":
-                    # Send random nonce for challenge-response authentication
-                    nonce = secrets.token_hex(16)
-                    self._auth_nonces[websocket] = nonce
-                    await websocket.send(json.dumps({
-                        "type": "auth_challenge",
-                        "nonce": nonce
-                    }))
-                    continue
-
-                if message_type == "auth_response":
-                    # Verify challenge-response using SHA-256 of raw password
-                    nonce = self._auth_nonces.get(websocket)
-                    if not nonce:
-                        await websocket.send(json.dumps({"status": "auth_error", "error": "no challenge issued"}))
                         continue
-                    
-                    username = str(payload.get("username", ""))
-                    response_hash = str(payload.get("response", ""))
-                    
-                    auth = self.window.config.get("auth", {})
-                    stored_password_hash = auth.get("password_hash", "")
-                    salt = auth.get("password_salt", "")
-                    simple_hash = auth.get("password_simple_hash", "")
-                    stored_username = auth.get("username", "")
-                    
-                    logging.info("Auth attempt: user=%s, has_simple_hash=%s", username, bool(simple_hash))
-                    
-                    # Client computes: SHA-256(SHA-256(raw_password):nonce)
-                    # Server verifies using stored simple_hash (SHA-256 of raw password)
-                    if simple_hash:
-                        expected = hashlib.sha256(f"{simple_hash}:{nonce}".encode()).hexdigest()
-                        logging.info("Challenge verification: nonce=%s, expected=%s, got=%s", 
-                                   nonce[:8] + "...", expected[:16] + "...", response_hash[:16] + "...")
+
+                    password_mode = remote_auth.auth_enabled(self.window.config)
+                    if (message_type == "auth" and not password_mode) or (message_type == "pair" and password_mode):
+                        # Wrong flow for the current setup; tell the phone which one to use.
+                        mode = "password" if password_mode else "pairing"
+                        await websocket.send(json.dumps({"status": "auth_required", "mode": mode}))
+                        continue
+
+                    if message_type == "auth_token":
+                        ok = remote_auth.verify_token(self.window.config, str(payload.get("token", "")))
+                        with_token = False
+                    elif message_type == "auth":
+                        ok = remote_auth.verify_password(
+                            self.window.config,
+                            str(payload.get("username", "")),
+                            str(payload.get("password", "")),
+                        )
+                        with_token = True
                     else:
-                        # No simple hash stored (old config), challenge-response won't work
-                        logging.warning("No password_simple_hash in config, challenge-response disabled")
-                        expected = None
-                    
-                    if username == stored_username and expected and response_hash == expected:
+                        ok = remote_auth.verify_pairing_code(self.pairing_code, str(payload.get("code", "")))
+                        with_token = True
+                        if ok:
+                            self.pairing_code = remote_auth.new_pairing_code()
+                            logging.warning("Remote paired; new pairing code generated")
+
+                    if ok:
                         authenticated = True
-                        await websocket.send(json.dumps({"status": "auth_ok"}))
-                        # Send apps list after successful authentication
-                        apps_list = self.window.get_installed_apps()
-                        await websocket.send(json.dumps({
-                            "status": "ok",
-                            "type": "apps_list",
-                            "apps": apps_list
-                        }))
+                        await self._grant_access(websocket, client, with_token)
                     else:
+                        self._rate_limiter.record_failure(client)
                         await websocket.send(json.dumps({"status": "auth_error", "error": "invalid credentials"}))
-                    
-                    # Clean up nonce
-                    if websocket in self._auth_nonces:
-                        del self._auth_nonces[websocket]
                     continue
 
                 if not authenticated:
-                    await websocket.send(json.dumps({"status": "auth_required"}))
+                    mode = "password" if remote_auth.auth_enabled(self.window.config) else "pairing"
+                    await websocket.send(json.dumps({"status": "auth_required", "mode": mode}))
                     continue
 
                 if message_type == "text":
@@ -3186,7 +3134,11 @@ class LauncherWindow(QMainWindow):
 
         elif name == "remoteLogin":
             auth = self.config.get("auth", {})
-            self.home_backend.set_panel(name, {"username": auth.get("username", ""), "status": ""})
+            self.home_backend.set_panel(name, {
+                "username": auth.get("username", ""),
+                "pairingCode": self.ws_server.pairing_code,
+                "status": "",
+            })
 
         elif name == "autoOpen":
             auto_launch = self.config.get("auto_launch", {})
@@ -3436,18 +3388,14 @@ class LauncherWindow(QMainWindow):
             if password != confirm_password:
                 self._panel_status("Passwords do not match.")
                 return
-            if len(password) < 4:
-                self._panel_status("Password must be at least 4 characters.")
+            if len(password) < 8:
+                self._panel_status("Password must be at least 8 characters.")
                 return
 
-        password_hash, password_salt = hash_remote_password(password)
-        password_simple_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
-        self.config["auth"] = {
-            "username": username,
-            "password_hash": password_hash,
-            "password_salt": password_salt,
-            "password_simple_hash": password_simple_hash,
-        }
+        if username and password:
+            self.config["auth"] = remote_auth.new_credentials(username, password)
+        else:
+            self.config["auth"] = dict(DEFAULT_CONFIG["auth"])
         try:
             save_config(self.config_path, self.config)
         except Exception as exc:

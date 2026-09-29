@@ -1,3 +1,5 @@
+import * as SecureStore from 'expo-secure-store';
+
 export type ConnectionState = 'Disconnected' | 'Connecting...' | 'Connected' | 'Error';
 export type AuthState =
   | 'Saved credentials loaded'
@@ -229,119 +231,41 @@ export class RealServerRepository implements RemoteRepository {
     username: '',
   };
   private shouldReconnect = false;
-  private passwordHash: string | null = null; // Store hashed password for challenge-response
+  private usedToken = false;
+  private authMode: 'password' | 'pairing' = 'password';
   private isRecordingState = false;
   private recordedActions: Array<{ payload: Record<string, any>; delayMs: number }> = [];
   private lastRecordTime = 0;
 
   constructor(private readonly emit: RepositoryListener) {}
 
-  private sha256(message: string): string {
-    // Pure JavaScript SHA-256 implementation for React Native compatibility
-    function rotateRight(n: number, x: number): number {
-      return (x >>> n) | (x << (32 - n));
-    }
-    function ch(x: number, y: number, z: number): number {
-      return (x & y) ^ (~x & z);
-    }
-    function maj(x: number, y: number, z: number): number {
-      return (x & y) ^ (x & z) ^ (y & z);
-    }
-    function sigma0(x: number): number {
-      return rotateRight(2, x) ^ rotateRight(13, x) ^ rotateRight(22, x);
-    }
-    function sigma1(x: number): number {
-      return rotateRight(6, x) ^ rotateRight(11, x) ^ rotateRight(25, x);
-    }
-    function gamma0(x: number): number {
-      return rotateRight(7, x) ^ rotateRight(18, x) ^ (x >>> 3);
-    }
-    function gamma1(x: number): number {
-      return rotateRight(17, x) ^ rotateRight(19, x) ^ (x >>> 10);
-    }
-
-    const K = [
-      0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-      0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-      0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-      0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-      0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-      0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-      0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-      0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
-    ];
-
-    const encoder = new TextEncoder();
-    const data = encoder.encode(message);
-    const bitLen = data.length * 8;
-    
-    // Padding
-    const padLen = data.length + 1 + ((119 - data.length) % 64);
-    const padded = new Uint8Array(padLen + 8);
-    padded.set(data);
-    padded[data.length] = 0x80;
-    
-    // Append original length in bits as 64-bit big-endian
-    const view = new DataView(padded.buffer);
-    const hi = Math.floor(bitLen / 0x100000000);
-    const lo = bitLen >>> 0;
-    view.setUint32(padLen, hi, false);  // big-endian
-    view.setUint32(padLen + 4, lo, false);  // big-endian
-
-    // Initialize hash values
-    let h0 = 0x6a09e667;
-    let h1 = 0xbb67ae85;
-    let h2 = 0x3c6ef372;
-    let h3 = 0xa54ff53a;
-    let h4 = 0x510e527f;
-    let h5 = 0x9b05688c;
-    let h6 = 0x1f83d9ab;
-    let h7 = 0x5be0cd19;
-
-    // Process each 512-bit block
-    for (let i = 0; i < padded.length; i += 64) {
-      const w = new Uint32Array(64);
-      for (let j = 0; j < 16; j++) {
-        w[j] = view.getUint32(i + j * 4, false);  // big-endian
-      }
-      for (let j = 16; j < 64; j++) {
-        w[j] = (gamma1(w[j - 2]) + w[j - 7] + gamma0(w[j - 15]) + w[j - 16]) | 0;
-      }
-
-      let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
-
-      for (let j = 0; j < 64; j++) {
-        const t1 = (h + sigma1(e) + ch(e, f, g) + K[j] + w[j]) | 0;
-        const t2 = (sigma0(a) + maj(a, b, c)) | 0;
-        h = g;
-        g = f;
-        f = e;
-        e = (d + t1) | 0;
-        d = c;
-        c = b;
-        b = a;
-        a = (t1 + t2) | 0;
-      }
-
-      h0 = (h0 + a) | 0;
-      h1 = (h1 + b) | 0;
-      h2 = (h2 + c) | 0;
-      h3 = (h3 + d) | 0;
-      h4 = (h4 + e) | 0;
-      h5 = (h5 + f) | 0;
-      h6 = (h6 + g) | 0;
-      h7 = (h7 + h) | 0;
-    }
-
-    // Convert to hex string
-    return [h0, h1, h2, h3, h4, h5, h6, h7]
-      .map(h => (h >>> 0).toString(16).padStart(8, '0'))
-      .join('');
+  private tokenKey(): string {
+    const target = `${this.latestConfig.ipAddress}_${this.latestConfig.port}`;
+    return `linuxtv_token_${target.replace(/[^A-Za-z0-9._-]/g, '_')}`;
   }
 
-  private async computePasswordHash(password: string): Promise<string> {
-    // Use pure JavaScript SHA-256 for React Native compatibility
-    return this.sha256(password);
+  private async loadToken(): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync(this.tokenKey());
+    } catch {
+      return null;
+    }
+  }
+
+  private async saveToken(token: string) {
+    try {
+      await SecureStore.setItemAsync(this.tokenKey(), token);
+    } catch {
+      // Without secure storage the phone just re-authenticates with the password next time.
+    }
+  }
+
+  private async clearToken() {
+    try {
+      await SecureStore.deleteItemAsync(this.tokenKey());
+    } catch {
+      // ignore
+    }
   }
 
   async connect(config?: Partial<ConnectionConfig>): Promise<void> {
@@ -387,9 +311,7 @@ export class RealServerRepository implements RemoteRepository {
           lastMessage: 'Remote session is live',
           status: 'Connected',
         });
-        if (this.latestConfig.username.trim() && this.latestConfig.password) {
-          void this.authenticate();
-        }
+        void this.authenticate();
       };
 
       ws.onclose = () => {
@@ -527,8 +449,37 @@ export class RealServerRepository implements RemoteRepository {
 
   private async authenticate() {
     const activeSocket = this.socket;
+    if (!activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
+      return false;
+    }
+
+    const token = await this.loadToken();
+    if (token) {
+      this.usedToken = true;
+      this.authStatus = 'Authenticating...';
+      this.emit({ authStatus: 'Authenticating...' });
+      activeSocket.send(JSON.stringify({ type: 'auth_token', token }));
+      return true;
+    }
+    this.usedToken = false;
+
     const selectedUsername = this.latestConfig.username.trim();
     const selectedPassword = this.latestConfig.password;
+    if (this.authMode === 'pairing') {
+      // The desktop has no password yet: the "password" field carries the code shown on the TV.
+      if (!selectedPassword) {
+        this.authStatus = 'Authentication required';
+        this.emit({
+          authStatus: 'Authentication required',
+          lastMessage: 'Enter the pairing code shown on the TV (Settings > Remote Login) as the password',
+        });
+        return false;
+      }
+      this.authStatus = 'Authenticating...';
+      this.emit({ authStatus: 'Authenticating...' });
+      activeSocket.send(JSON.stringify({ type: 'pair', code: selectedPassword.trim() }));
+      return true;
+    }
 
     if (!selectedUsername || !selectedPassword) {
       this.authStatus = 'Authentication required';
@@ -539,60 +490,12 @@ export class RealServerRepository implements RemoteRepository {
       return false;
     }
 
-    if (!activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
-      this.authStatus = 'Saved credentials loaded';
-      this.emit({
-        authStatus: 'Saved credentials loaded',
-        lastMessage: 'Credentials saved on this phone. Waiting for LinuxTV to come online.',
-      });
-      return true;
-    }
-
     this.authStatus = 'Authenticating...';
     this.emit({ authStatus: 'Authenticating...' });
-    
-    // Request a challenge from the server
     activeSocket.send(
-      JSON.stringify({
-        type: 'auth_challenge',
-      })
+      JSON.stringify({ type: 'auth', username: selectedUsername, password: selectedPassword })
     );
     return true;
-  }
-
-  private async handleAuthChallenge(nonce: string) {
-    const activeSocket = this.socket;
-    if (!activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    const selectedUsername = this.latestConfig.username.trim();
-    const selectedPassword = this.latestConfig.password;
-
-    console.log('[Auth] Starting challenge-response auth');
-    console.log('[Auth] Username:', selectedUsername);
-    console.log('[Auth] Nonce:', nonce);
-
-    // Compute password hash if not already done
-    if (!this.passwordHash) {
-      this.passwordHash = await this.computePasswordHash(selectedPassword);
-      console.log('[Auth] Computed password hash:', this.passwordHash);
-    }
-
-    // Compute response: SHA-256(password_hash:nonce) using pure JS implementation
-    const challengeString = `${this.passwordHash}:${nonce}`;
-    console.log('[Auth] Challenge string:', challengeString);
-    const responseHash = this.sha256(challengeString);
-    console.log('[Auth] Response hash:', responseHash);
-
-    // Send challenge response
-    activeSocket.send(
-      JSON.stringify({
-        type: 'auth_response',
-        username: selectedUsername,
-        response: responseHash,
-      })
-    );
   }
 
   private sendPayload(
@@ -678,6 +581,8 @@ export class RealServerRepository implements RemoteRepository {
         speakers?: Array<{name: string; label: string}>;
         default_sink?: string;
         success?: boolean;
+        token?: string;
+        mode?: string;
         sink?: string;
         image?: string;
         path?: string;
@@ -685,13 +590,10 @@ export class RealServerRepository implements RemoteRepository {
         brightness?: number;
       };
 
-      // Handle auth challenge from server
-      if (payload.type === 'auth_challenge' && payload.nonce) {
-        void this.handleAuthChallenge(payload.nonce);
-        return;
-      }
-
       if (payload.status === 'auth_ok') {
+        if (payload.token) {
+          void this.saveToken(payload.token);
+        }
         this.authStatus = 'Authenticated';
         this.emit({
           authStatus: 'Authenticated',
@@ -712,6 +614,12 @@ export class RealServerRepository implements RemoteRepository {
       }
 
       if (payload.status === 'auth_error') {
+        if (this.usedToken) {
+          // Token was revoked (password changed on the TV): fall back to the password once.
+          this.usedToken = false;
+          void this.clearToken().then(() => this.authenticate());
+          return;
+        }
         this.pendingOutbound = null;
         this.authStatus = 'Authentication failed';
         this.emit({
@@ -722,14 +630,13 @@ export class RealServerRepository implements RemoteRepository {
       }
 
       if (payload.status === 'auth_required') {
+        this.authMode = payload.mode === 'pairing' ? 'pairing' : 'password';
         this.authStatus = 'Authentication required';
         this.emit({
           authStatus: 'Authentication required',
           lastMessage: 'Sign in with the desktop username and password',
         });
-        if (this.latestConfig.username.trim() && this.latestConfig.password) {
-          void this.authenticate();
-        }
+        void this.authenticate();
         return;
       }
 

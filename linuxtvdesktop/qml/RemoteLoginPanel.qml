@@ -6,11 +6,20 @@ Column {
 
     Text {
         width: parent.width
-        text: "Set the phone credentials required to control LinuxTV remotely. Leave all fields empty to disable phone authentication."
+        text: "Set the phone credentials required to control LinuxTV remotely (password: 8+ characters). Leave all fields empty to pair phones with the code below instead."
         color: theme.text_muted
         font.family: theme.font_family
         font.pixelSize: 13
         wrapMode: Text.WordWrap
+    }
+
+    Text {
+        width: parent.width
+        text: "Pairing code: " + (backend.panelData.pairingCode || "")
+        color: theme.text
+        font.family: theme.font_family
+        font.pixelSize: 16
+        font.bold: true
     }
 
     Text { text: "Username"; color: theme.text_muted; font.family: theme.font_family; font.pixelSize: 12 }
