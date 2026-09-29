@@ -123,3 +123,57 @@ class RateLimiter:
     def record_success(self, key) -> None:
         self._failures.pop(key, None)
         self._locked_until.pop(key, None)
+
+
+AUTH_MESSAGE_TYPES = ("auth", "auth_token", "pair")
+
+
+class AuthGate:
+    """Decides the reply to auth messages; the WebSocket handler only does I/O.
+
+    `config` is the live config dict; `persist` is called after a token is issued.
+    """
+
+    def __init__(self, config, persist, limiter: RateLimiter = None):
+        self.config = config
+        self.persist = persist
+        self.limiter = limiter or RateLimiter()
+        self.pairing_code = new_pairing_code()
+
+    def required(self) -> dict:
+        mode = "password" if auth_enabled(self.config) else "pairing"
+        return {"status": "auth_required", "mode": mode}
+
+    def handle(self, client, message_type: str, payload: dict) -> tuple:
+        """Process one auth message. Returns (reply, granted)."""
+        wait = self.limiter.blocked(client)
+        if wait:
+            return {"status": "auth_error", "error": f"too many attempts, retry in {int(wait) + 1}s"}, False
+
+        password_mode = auth_enabled(self.config)
+        if (message_type == "auth" and not password_mode) or (message_type == "pair" and password_mode):
+            return self.required(), False  # wrong flow for this setup; not a failed attempt
+
+        if message_type == "auth_token":
+            ok, with_token = verify_token(self.config, str(payload.get("token", ""))), False
+        elif message_type == "auth":
+            ok = verify_password(self.config, str(payload.get("username", "")), str(payload.get("password", "")))
+            with_token = True
+        elif message_type == "pair":
+            ok = verify_pairing_code(self.pairing_code, str(payload.get("code", "")))
+            with_token = True
+            if ok:
+                self.pairing_code = new_pairing_code()
+        else:
+            return self.required(), False
+
+        if not ok:
+            self.limiter.record_failure(client)
+            return {"status": "auth_error", "error": "invalid credentials"}, False
+
+        self.limiter.record_success(client)
+        reply = {"status": "auth_ok"}
+        if with_token:
+            reply["token"] = issue_token(self.config)
+            self.persist()
+        return reply, True

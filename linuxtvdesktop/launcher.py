@@ -1473,9 +1473,18 @@ class WebSocketControlServer(threading.Thread):
         self.loop = None
         self.server = None
         self._stop_event = threading.Event()
-        self._rate_limiter = remote_auth.RateLimiter()
-        self.pairing_code = remote_auth.new_pairing_code()
-        logging.warning("Remote pairing code: %s (needed only until a phone is paired)", self.pairing_code)
+        self.gate = remote_auth.AuthGate(window.config, self._persist_config)
+        logging.warning("Remote pairing code: %s (needed only until a phone is paired)", self.gate.pairing_code)
+
+    @property
+    def pairing_code(self):
+        return self.gate.pairing_code
+
+    def _persist_config(self):
+        try:
+            save_config(self.window.config_path, self.window.config)
+        except Exception:
+            logging.exception("Failed to persist remote auth config")
 
     async def _send_apps_list(self, websocket):
         await websocket.send(json.dumps({
@@ -1483,19 +1492,6 @@ class WebSocketControlServer(threading.Thread):
             "type": "apps_list",
             "apps": self.window.get_installed_apps(),
         }))
-
-    async def _grant_access(self, websocket, client, with_token: bool):
-        """Mark the client authenticated; optionally mint a device token for it."""
-        self._rate_limiter.record_success(client)
-        reply = {"status": "auth_ok"}
-        if with_token:
-            reply["token"] = remote_auth.issue_token(self.window.config)
-            try:
-                save_config(self.window.config_path, self.window.config)
-            except Exception:
-                logging.exception("Failed to persist new remote device token")
-        await websocket.send(json.dumps(reply))
-        await self._send_apps_list(websocket)
 
     async def handler(self, websocket, path=None):
         remote = websocket.remote_address
@@ -1514,50 +1510,16 @@ class WebSocketControlServer(threading.Thread):
                 if message_type not in ("auth", "auth_token", "pair"):
                     logging.info("Received remote action: %s", message_type or "<invalid>")
 
-                if message_type in ("auth", "auth_token", "pair"):
-                    wait = self._rate_limiter.blocked(client)
-                    if wait:
-                        await websocket.send(json.dumps({
-                            "status": "auth_error",
-                            "error": f"too many attempts, retry in {int(wait) + 1}s",
-                        }))
-                        continue
-
-                    password_mode = remote_auth.auth_enabled(self.window.config)
-                    if (message_type == "auth" and not password_mode) or (message_type == "pair" and password_mode):
-                        # Wrong flow for the current setup; tell the phone which one to use.
-                        mode = "password" if password_mode else "pairing"
-                        await websocket.send(json.dumps({"status": "auth_required", "mode": mode}))
-                        continue
-
-                    if message_type == "auth_token":
-                        ok = remote_auth.verify_token(self.window.config, str(payload.get("token", "")))
-                        with_token = False
-                    elif message_type == "auth":
-                        ok = remote_auth.verify_password(
-                            self.window.config,
-                            str(payload.get("username", "")),
-                            str(payload.get("password", "")),
-                        )
-                        with_token = True
-                    else:
-                        ok = remote_auth.verify_pairing_code(self.pairing_code, str(payload.get("code", "")))
-                        with_token = True
-                        if ok:
-                            self.pairing_code = remote_auth.new_pairing_code()
-                            logging.warning("Remote paired; new pairing code generated")
-
-                    if ok:
+                if message_type in remote_auth.AUTH_MESSAGE_TYPES:
+                    reply, granted = self.gate.handle(client, message_type, payload)
+                    await websocket.send(json.dumps(reply))
+                    if granted:
                         authenticated = True
-                        await self._grant_access(websocket, client, with_token)
-                    else:
-                        self._rate_limiter.record_failure(client)
-                        await websocket.send(json.dumps({"status": "auth_error", "error": "invalid credentials"}))
+                        await self._send_apps_list(websocket)
                     continue
 
                 if not authenticated:
-                    mode = "password" if remote_auth.auth_enabled(self.window.config) else "pairing"
-                    await websocket.send(json.dumps({"status": "auth_required", "mode": mode}))
+                    await websocket.send(json.dumps(self.gate.required()))
                     continue
 
                 if message_type == "text":
