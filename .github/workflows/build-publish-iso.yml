@@ -44,11 +44,18 @@ jobs:
         working-directory: iso-builder
         run: sudo ./build-iso.sh
 
+      # Sidecar file so users can verify the download: sha256sum -c LinuxTV.iso.sha256
+      - name: Generate checksum
+        working-directory: iso-builder
+        run: sha256sum LinuxTV.iso | tee LinuxTV.iso.sha256
+
       - name: Upload ISO as a workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: LinuxTV-iso
-          path: iso-builder/LinuxTV.iso
+          path: |
+            iso-builder/LinuxTV.iso
+            iso-builder/LinuxTV.iso.sha256
           retention-days: 14
 
       - name: Publish to SourceForge
@@ -64,6 +71,7 @@ jobs:
           ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts 2>/dev/null
           rsync -avP -e "ssh -i ~/.ssh/sourceforge_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
             iso-builder/LinuxTV.iso \
+            iso-builder/LinuxTV.iso.sha256 \
             "${SOURCEFORGE_USER}@frs.sourceforge.net:/home/frs/project/${SOURCEFORGE_PROJECT}/release/"
 
       # Keeps one persistent "latest" release as the standing download point,
@@ -79,4 +87,5 @@ jobs:
             gh release create latest --repo "${{ github.repository }}" \
               --title "Latest build" --notes "Automatically updated by CI. Not a tagged version release."
           gh release upload latest --repo "${{ github.repository }}" --clobber \
-            iso-builder/LinuxTV.iso
+            iso-builder/LinuxTV.iso \
+            iso-builder/LinuxTV.iso.sha256

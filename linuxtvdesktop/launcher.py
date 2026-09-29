@@ -1,31 +1,72 @@
 #!/usr/bin/env python3
-import asyncio
 import base64
 import configparser
 from concurrent.futures import ThreadPoolExecutor
-from functools import lru_cache
-import hashlib
-import http.server
-import importlib
-import json
 import logging
 import os
 import queue
 import signal
-import shlex
-import secrets
 import shutil
-import socketserver
 import subprocess
 import sys
 import threading
 import time
 import tempfile
 from pathlib import Path
-from urllib.parse import urlparse
-from urllib.request import Request, urlopen
 
 import remote_auth
+
+from app_config import (
+    DEFAULT_CONFIG,
+    load_config,
+    resolve_config_path,
+    save_config,
+)
+from icons import (
+    backdrop_image,
+    desktop_file_locations,
+    dominant_color,
+    fetch_web_icon,
+    find_native_icon_source,
+    find_web_icon_source,
+    normalized_icon_path,
+    resolve_native_icon,
+    resource_path,
+)
+from qt_compat import (
+    Property,
+    QApplication,
+    QColor,
+    QEvent,
+    QFontDatabase,
+    QKeyEvent,
+    QMainWindow,
+    QMessageBox,
+    QObject,
+    QQuickWidget,
+    QT_BINDING,
+    QTimer,
+    QUrl,
+    Qt,
+    Signal,
+    Slot,
+)
+from remote_server import InputDeviceGrabber, WebSocketControlServer
+from system_controls import (
+    control_system_brightness,
+    control_system_volume,
+    enforce_native_fullscreen,
+    find_browser,
+    find_window_ids_for_pid,
+    get_current_brightness,
+    is_installed,
+    request_system_power_action,
+    request_system_update,
+    run_command,
+    split_command,
+    sync_system_time,
+)
+from theme import THEME
 
 try:
     import yaml
@@ -37,155 +78,22 @@ try:
 except ImportError:
     websockets = None
 
-QT_BINDING = None
 
 
-def _load_qt_binding():
-    preferred = os.getenv("LINUXTV_QT_BINDING")
-    if preferred:
-        order = [preferred]
-    elif sys.platform.startswith("linux"):
-        order = ["PyQt5", "PySide6"]
-    else:
-        order = ["PySide6", "PyQt5"]
-
-    for binding in order:
-        try:
-            if binding == "PyQt5":
-                qt_core = importlib.import_module("PyQt5.QtCore")
-                qt_gui = importlib.import_module("PyQt5.QtGui")
-                qt_widgets = importlib.import_module("PyQt5.QtWidgets")
-                qt_quickwidgets = importlib.import_module("PyQt5.QtQuickWidgets")
-                signal_type = qt_core.pyqtSignal
-                slot_type = qt_core.pyqtSlot
-                property_type = qt_core.pyqtProperty
-            elif binding == "PySide6":
-                qt_core = importlib.import_module("PySide6.QtCore")
-                qt_gui = importlib.import_module("PySide6.QtGui")
-                qt_widgets = importlib.import_module("PySide6.QtWidgets")
-                qt_quickwidgets = importlib.import_module("PySide6.QtQuickWidgets")
-                signal_type = qt_core.Signal
-                slot_type = qt_core.Slot
-                property_type = qt_core.Property
-            else:
-                logging.warning("Unknown Qt binding requested: %s", binding)
-                continue
-
-            return (
-                binding,
-                qt_core.QEvent,
-                qt_core.QObject,
-                qt_core.QRect,
-                qt_core.Qt,
-                qt_core.QTimer,
-                qt_core.QUrl,
-                signal_type,
-                slot_type,
-                property_type,
-                qt_gui.QFontDatabase,
-                qt_gui.QIcon,
-                qt_gui.QImage,
-                qt_gui.QKeyEvent,
-                qt_gui.QPixmap,
-                qt_gui.QColor,
-                qt_gui.QPainter,
-                qt_widgets.QApplication,
-                qt_widgets.QMainWindow,
-                qt_widgets.QMessageBox,
-                qt_widgets.QWidget,
-                qt_quickwidgets.QQuickWidget,
-            )
-        except ImportError:
-            continue
-
-    raise ImportError("No supported Qt binding found. Install PyQt5 or PySide6.")
 
 
-(
-    QT_BINDING,
-    QEvent,
-    QObject,
-    QRect,
-    Qt,
-    QTimer,
-    QUrl,
-    Signal,
-    Slot,
-    Property,
-    QFontDatabase,
-    QIcon,
-    QImage,
-    QKeyEvent,
-    QPixmap,
-    QColor,
-    QPainter,
-    QApplication,
-    QMainWindow,
-    QMessageBox,
-    QWidget,
-    QQuickWidget,
-) = _load_qt_binding()
 
 APP_NAME = "LinuxTV"
 LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
 REMOTE_POINTER_SPEED_MULTIPLIER = 2.5
 REMOTE_POINTER_TARGET_CACHE_SECONDS = 1.0
 
-DEFAULT_CONFIG = {
-    "native_apps": [
-        {"name": "Kodi", "cmd": "kodi", "icon": "icons/kodi.png"},
-        {"name": "Stremio", "cmd": "stremio-qt5", "icon": "icons/stremio.png"},
-        {"name": "VLC", "cmd": "vlc", "icon": "icons/vlc.png"},
-    ],
-    "web_apps": [
-        {"name": "YouTube", "url": "https://www.youtube.com", "icon": "icons/youtube.png"},
-    ],
-    "categories": {},  # User-defined categories: {"category_name": ["app_name", ...]}
-    "auth": {
-        "username": "",
-        "password_hash": "",  # PBKDF2 hash for storage
-        "password_salt": "",  # Salt for PBKDF2
-        "password_iterations": 0,
-        "tokens": [],  # SHA-256 digests of paired-device tokens
-    },
-    "websocket": {
-        "host": "0.0.0.0",
-        "port": 8765,
-    },
-    "auto_launch": {
-        "app_kind": "",
-        "app_target": "",
-        "delay_seconds": 10,
-    },
-}
 
 LINE_COUNT = 4
 COLUMN_COUNT = 3
 AUTO_LAUNCH_IDLE_MS = 10_000
 UPDATE_REPO_URL = "https://github.com/guruswarupa/LinuxTV"
 
-# Single source of truth for the QML home screen and the legacy QWidget
-# dialogs, so both surfaces stay visually consistent.
-THEME = {
-    "font_family": "Inter",
-    "font_fallback": "Noto Sans",
-    "bg": "#0b1120",
-    "bg_alt": "#0f172a",
-    "surface": "#1e293b",
-    "surface_alt": "#334155",
-    "border": "#334155",
-    "text": "#f8fafc",
-    "text_muted": "#94a3b8",
-    "accent": "#3b82f6",
-    "accent_alt": "#60a5fa",
-    "focus_glow": "#ffffff",
-    "danger": "#ef4444",
-    "success": "#10b981",
-    "warning": "#f59e0b",
-    "radius_card": 18,
-    "radius_pill": 999,
-    "card_focus_scale": 1.1,
-}
 
 
 def detect_reduced_effects_default() -> bool:
@@ -216,1756 +124,82 @@ def resolve_display_font() -> str:
     return THEME["font_fallback"]
 
 
-def dominant_color(icon_path: str) -> str:
-    """Return a saturated '#rrggbb' average color for an icon, for use as a
-    card's brand-color background before/instead of full artwork."""
-    if not icon_path:
-        return THEME["surface_alt"]
-
-    source = Path(icon_path).expanduser()
-    if not source.exists():
-        return THEME["surface_alt"]
-
-    cache_file = cache_dir() / "colors" / f"{hashlib.sha1(str(source).encode('utf-8')).hexdigest()}.txt"
-    if cache_file.exists():
-        cached = cache_file.read_text().strip()
-        if cached:
-            return cached
-
-    image = QImage(str(source))
-    if image.isNull():
-        return THEME["surface_alt"]
-
-    small = image.scaled(24, 24, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).convertToFormat(QImage.Format_ARGB32)
-
-    total_r = total_g = total_b = 0
-    weight = 0
-    for y in range(small.height()):
-        for x in range(small.width()):
-            pixel = small.pixel(x, y)
-            alpha = (pixel >> 24) & 0xFF
-            if alpha < 32:
-                continue
-            r = (pixel >> 16) & 0xFF
-            g = (pixel >> 8) & 0xFF
-            b = pixel & 0xFF
-            channel_spread = max(r, g, b) - min(r, g, b)
-            # Down-weight near-gray/near-white/near-black pixels so logo
-            # backgrounds don't wash out the brand color.
-            brightness = (r + g + b) / 3
-            if channel_spread < 18 and (brightness < 24 or brightness > 232):
-                sample_weight = 1
-            else:
-                sample_weight = 4 + channel_spread // 8
-            total_r += r * sample_weight
-            total_g += g * sample_weight
-            total_b += b * sample_weight
-            weight += sample_weight
-
-    if weight == 0:
-        result = THEME["surface_alt"]
-    else:
-        r_avg, g_avg, b_avg = total_r // weight, total_g // weight, total_b // weight
-        # A monochrome brand mark (e.g. HBO Max's all-black wordmark) would
-        # otherwise extract as pure black -- used as the card's own
-        # background, that makes the icon sitting on top of it invisible.
-        # Clamp into a band that's never confusable with the app's own
-        # near-black background or a stark white block, preserving hue for
-        # anything that already had one.
-        brightness = (r_avg + g_avg + b_avg) / 3
-        min_brightness, max_brightness = 40, 210
-        if brightness < min_brightness:
-            if brightness <= 0:
-                r_avg = g_avg = b_avg = min_brightness
-            else:
-                scale = min_brightness / brightness
-                r_avg = min(255, round(r_avg * scale))
-                g_avg = min(255, round(g_avg * scale))
-                b_avg = min(255, round(b_avg * scale))
-        elif brightness > max_brightness:
-            scale = max_brightness / brightness
-            r_avg = round(r_avg * scale)
-            g_avg = round(g_avg * scale)
-            b_avg = round(b_avg * scale)
-        result = "#%02x%02x%02x" % (r_avg, g_avg, b_avg)
-
-    try:
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        cache_file.write_text(result)
-    except OSError:
-        pass
-    return result
-
-
-def backdrop_image(icon_path: str, size: int = 480) -> str:
-    """Return a path to a cheaply-blurred backdrop derived from an icon
-    (downscale then smooth-upscale), for the ambient background."""
-    if not icon_path:
-        return ""
-
-    source = Path(icon_path).expanduser()
-    if not source.exists():
-        return ""
-
-    cache_file = cache_dir() / "backdrops" / f"{hashlib.sha1(str(source).encode('utf-8')).hexdigest()}.png"
-    if cache_file.exists():
-        return str(cache_file)
-
-    image = QImage(str(source))
-    if image.isNull():
-        return ""
-
-    tiny = image.scaled(16, 16, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-    blurred = tiny.scaled(size, size, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-
-    try:
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        blurred.save(str(cache_file), "PNG")
-    except OSError:
-        return ""
-    return str(cache_file)
-
-
-def sync_system_time():
-    """Best-effort startup time check. This deliberately does NOT try to
-    turn NTP on itself -- that's a privileged systemd-timedated operation
-    that goes through polkit, which means a kiosk box with no one present
-    to click "Authenticate" either hangs waiting for a prompt or gets
-    denied outright, and it'd repeat on every single launch since a failed
-    attempt changes nothing. Enabling NTP is a one-time system setup
-    concern (setup.sh does it, with a real admin authenticating once), not
-    something to keep re-attempting from inside the app. This just reports
-    the current status."""
-    timedatectl = shutil.which("timedatectl")
-    if not timedatectl:
-        return False, "timedatectl is not installed."
-
-    try:
-        status_result = subprocess.run(
-            [timedatectl, "show", "--property=NTP,NTPSynchronized", "--value"],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=10,
-        )
-    except Exception as exc:
-        logging.exception("Failed to read time sync status")
-        return False, f"Could not read time sync status: {exc}"
-
-    if status_result.returncode != 0:
-        message = (status_result.stderr or status_result.stdout or "Unknown error").strip()
-        return False, f"Could not read time sync status: {message}"
-
-    ntp_enabled, _, ntp_synced = status_result.stdout.strip().partition("\n")
-    if ntp_enabled.strip().lower() != "yes":
-        return False, "Automatic time sync (NTP) is off. Run setup.sh (or `sudo timedatectl set-ntp true`) to enable it."
-    if ntp_synced.strip().lower() == "yes":
-        return True, "System time synchronized."
-    return True, "Automatic time sync is enabled; waiting for the first sync."
-
-
-def resource_path(relpath: str) -> Path:
-    base = Path(__file__).parent
-    return (base / relpath).expanduser().resolve()
-
-
-def cache_dir() -> Path:
-    return Path(os.getenv("XDG_CACHE_HOME", "~/.cache")).expanduser() / "linuxtv" / "icons"
-
-
-def desktop_file_locations():
-    return [
-        Path.home() / ".local/share/applications",
-        Path.home() / ".local/share/flatpak/exports/share/applications",
-        Path("/usr/local/share/applications"),
-        Path("/usr/share/applications"),
-        Path("/var/lib/flatpak/exports/share/applications"),
-    ]
-
-
-def icon_search_locations():
-    return [
-        Path.home() / ".local/share/icons",
-        Path.home() / ".icons",
-        Path.home() / ".local/share/flatpak/exports/share/icons",
-        Path("/usr/local/share/icons"),
-        Path("/usr/share/icons/hicolor"),
-        Path("/var/lib/flatpak/exports/share/icons/hicolor"),
-        Path("/usr/share/pixmaps"),
-    ]
-
-
-def _visible_content_bounds(pixmap):
-    """Return ((left, top, right, bottom) fractions of the full image, 0..1,
-    avg_brightness 0..255) describing an icon's actual (non-transparent)
-    art. Source icons vary wildly in how much internal padding they carry --
-    some are a small mark on a mostly-transparent canvas, others (Spotify,
-    Twitch, Crunchyroll, ...) are "full bleed" art that touches every edge.
-    avg_brightness flags icons like HBO Max's all-black wordmark, which
-    would otherwise be invisible against their own extracted card color.
-    Scans a small downsampled copy since exact pixel precision isn't
-    needed, just enough to tell full-bleed from padded."""
-    probe = 48
-    img = pixmap.scaled(probe, probe, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).toImage().convertToFormat(QImage.Format_ARGB32)
-    w, h = img.width(), img.height()
-    if w == 0 or h == 0:
-        return 0.0, 0.0, 1.0, 1.0, 128.0
-
-    left, top, right, bottom = w, h, -1, -1
-    threshold = 24
-    brightness_total = 0
-    visible_count = 0
-    for y in range(h):
-        for x in range(w):
-            pixel = img.pixel(x, y)
-            if (pixel >> 24) & 0xFF > threshold:
-                if x < left:
-                    left = x
-                if x > right:
-                    right = x
-                if y < top:
-                    top = y
-                if y > bottom:
-                    bottom = y
-                r = (pixel >> 16) & 0xFF
-                g = (pixel >> 8) & 0xFF
-                b = pixel & 0xFF
-                brightness_total += (r + g + b) / 3
-                visible_count += 1
-
-    avg_brightness = (brightness_total / visible_count) if visible_count else 128.0
-    if right < left or bottom < top:
-        return 0.0, 0.0, 1.0, 1.0, avg_brightness
-    return left / w, top / h, (right + 1) / w, (bottom + 1) / h, avg_brightness
-
-
-def normalized_icon_path(source_path: str, cache_key: str, size: int = 128):
-    if not source_path:
-        return ""
-
-    icon_source = Path(source_path).expanduser()
-    if not icon_source.exists():
-        return ""
-
-    normalized_dir = cache_dir() / "normalized"
-    normalized_dir.mkdir(parents=True, exist_ok=True)
-    # The size (and a version tag for the normalization algorithm itself)
-    # is part of the cache key so a change here -- or a cache left over
-    # from an older build -- can never collide with, and silently serve,
-    # the wrong result.
-    target_path = normalized_dir / f"{hashlib.sha1(f'{cache_key}:{size}:v7'.encode('utf-8')).hexdigest()}.png"
-    if target_path.exists():
-        return str(target_path)
-
-    pixmap = QPixmap(str(icon_source))
-    if pixmap.isNull():
-        icon = QIcon(str(icon_source))
-        pixmap = icon.pixmap(size, size)
-    if pixmap.isNull():
-        # Don't hand QML a raw, un-normalized file -- source icons range
-        # from 68px to 1280px and aren't all square, so anything we
-        # couldn't scale ourselves would render inconsistently (or get
-        # stretched to fill its box instead of fitting inside it). Falling
-        # back to no icon (the card's letter/color placeholder) is safer.
-        return ""
-
-    # Scale the *visible content* -- not the raw canvas, which may carry
-    # a lot of transparent padding or none at all -- to a consistent
-    # fraction of the final square, so every icon reads as roughly the
-    # same visual size regardless of how its source art was padded.
-    # Every icon now sits on its own fixed white squircle badge (see
-    # AppCard.qml), so a monochrome-dark mark like HBO Max's is naturally
-    # high-contrast as-is -- no need to recolor it.
-    left, top, right, bottom, _avg_brightness = _visible_content_bounds(pixmap)
-
-    # left/top/right/bottom are fractions of the source; convert the
-    # content's span to actual source pixels before relating it to the
-    # target canvas -- scaling by a fraction of the *source's own* size
-    # says nothing about how that lands relative to `size`.
-    content_span_px = max((right - left) * pixmap.width(), (bottom - top) * pixmap.height(), 1)
-    target_fraction = 0.78
-    overall_scale = (target_fraction * size) / content_span_px
-
-    scaled = pixmap.scaled(
-        max(1, round(pixmap.width() * overall_scale)),
-        max(1, round(pixmap.height() * overall_scale)),
-        Qt.KeepAspectRatio,
-        Qt.SmoothTransformation,
-    )
-    # left/top/right/bottom are fractions, so they still locate the visible
-    # content's center correctly in the rescaled pixmap's own coordinates.
-    content_cx = (left + right) / 2 * scaled.width()
-    content_cy = (top + bottom) / 2 * scaled.height()
-
-    canvas = QPixmap(size, size)
-    canvas.fill(Qt.transparent)
-    painter = QPainter(canvas)
-    painter.setRenderHint(QPainter.SmoothPixmapTransform)
-    painter.drawPixmap(round(size / 2 - content_cx), round(size / 2 - content_cy), scaled)
-    painter.end()
-
-    canvas.save(str(target_path), "PNG")
-    return str(target_path)
-
-
-def create_white_icon(icon_path: str, size: int = 96):
-    """Create a white version of an icon by painting it with white color"""
-    if not icon_path:
-        return QIcon()
-    
-    icon_source = Path(icon_path).expanduser()
-    if not icon_source.exists():
-        return QIcon()
-    
-    pixmap = QPixmap(str(icon_source))
-    if pixmap.isNull():
-        return QIcon()
-    
-    # Create a new pixmap with the same size
-    white_pixmap = QPixmap(pixmap.size())
-    white_pixmap.fill(Qt.transparent)
-    
-    # Paint the original pixmap in white
-    painter = QPainter(white_pixmap)
-    painter.setCompositionMode(QPainter.CompositionMode_Source)
-    painter.drawPixmap(0, 0, pixmap)
-    painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
-    painter.fillRect(white_pixmap.rect(), Qt.white)
-    painter.end()
-    
-    return QIcon(white_pixmap)
-
-
-def _icon_theme_size_score(path: Path) -> int:
-    """Higher is better. System icon themes (e.g. hicolor) organize icons
-    under size-named directories like '48x48' or '128x128', plus a
-    'scalable' (vector, sharp at any size) tier -- a glob across the theme
-    can just as easily land on a 16x16 icon as a 256x256 one, and the
-    former gets visibly blurry/pixelated once upscaled onto a card."""
-    for part in path.parts:
-        if part == "scalable":
-            return 100_000
-        head, _, tail = part.partition("x")
-        if head.isdigit() and tail.isdigit():
-            return int(head)
-    return 0
-
-
-@lru_cache(maxsize=256)
-def resolve_icon_name(icon_name: str):
-    if not icon_name:
-        return ""
-
-    icon_path = Path(icon_name).expanduser()
-    if icon_path.exists():
-        return str(icon_path)
-
-    for suffix in ("svg", "png", "xpm"):
-        best_path = None
-        best_score = -1
-        for base_dir in icon_search_locations():
-            if not base_dir.exists():
-                continue
-            direct_match = base_dir / f"{icon_name}.{suffix}"
-            if direct_match.exists():
-                return str(direct_match)
-            for candidate in base_dir.glob(f"**/{icon_name}.{suffix}"):
-                if not candidate.exists():
-                    continue
-                score = _icon_theme_size_score(candidate)
-                if score > best_score:
-                    best_score = score
-                    best_path = candidate
-        if best_path is not None:
-            return str(best_path)
-    return ""
-
-
-def desktop_entry_for_command(command_text: str):
-    parts = split_command(command_text)
-    if not parts:
-        return None
-
-    if len(parts) >= 3 and parts[0] == "flatpak" and parts[1] == "run":
-        flatpak_app_id = parts[2]
-        for directory in desktop_file_locations():
-            direct_match = directory / f"{flatpak_app_id}.desktop"
-            if direct_match.exists():
-                parser = configparser.ConfigParser(interpolation=None)
-                try:
-                    parser.read(direct_match, encoding="utf-8")
-                except Exception:
-                    continue
-                if "Desktop Entry" in parser:
-                    return parser["Desktop Entry"]
-
-    executable = Path(parts[0]).name
-    for directory in desktop_file_locations():
-        if not directory.exists():
-            continue
-        for desktop_file in directory.glob("*.desktop"):
-            parser = configparser.ConfigParser(interpolation=None)
-            try:
-                parser.read(desktop_file, encoding="utf-8")
-            except Exception:
-                continue
-            if "Desktop Entry" not in parser:
-                continue
-            entry = parser["Desktop Entry"]
-            exec_line = entry.get("Exec", "")
-            if not exec_line:
-                continue
-            exec_parts = split_command(exec_line.replace("%u", "").replace("%U", "").replace("%f", "").replace("%F", ""))
-            if not exec_parts:
-                continue
-            entry_exec = Path(exec_parts[0]).name
-            if executable == entry_exec:
-                return entry
-            if len(parts) >= 3 and parts[0] == "flatpak" and parts[1] == "run" and parts[2] in exec_parts:
-                return entry
-    return None
-
-
-def find_native_icon_source(app):
-    """Same lookup order as resolve_native_icon, but returns the raw,
-    un-normalized (source_path, cache_key) -- for callers (color/backdrop
-    extraction) that need the icon's real, original pixels rather than the
-    display-normalized variant, which may have been recolored (e.g. a
-    near-black mark repainted white for visibility)."""
-    app_name = app.get("name", "")
-
-    if app_name:
-        icon_name = app_name.lower().replace(" ", "") + ".png"
-        icon_path = resource_path("icons/" + icon_name)
-        if icon_path.exists():
-            return str(icon_path), f"native-name:{icon_name}"
-
-    configured_icon = app.get("icon", "")
-    if configured_icon:
-        path = resource_path(configured_icon)
-        if path.exists():
-            return str(path), f"native-config:{configured_icon}"
-
-    entry = desktop_entry_for_command(app.get("cmd", ""))
-    if entry:
-        resolved = resolve_icon_name(entry.get("Icon", ""))
-        if resolved:
-            return resolved, f"native-entry:{app.get('cmd', '')}:{entry.get('Icon', '')}"
-
-    return "", ""
-
-
-def resolve_native_icon(app):
-    source, cache_key = find_native_icon_source(app)
-    if not source:
-        return ""
-    return normalized_icon_path(source, cache_key)
-
-
-def find_web_icon_source(app):
-    """Web-app counterpart to find_native_icon_source -- see its docstring."""
-    app_name = app.get("name", "")
-
-    if app_name:
-        icon_name = app_name.lower().replace(" ", "").replace("+", "plus") + ".png"
-        icon_path = resource_path("icons/" + icon_name)
-        if icon_path.exists():
-            return str(icon_path), f"web-name:{icon_name}"
-
-    configured_icon = app.get("icon", "")
-    if configured_icon:
-        path = resource_path(configured_icon)
-        if path.exists():
-            return str(path), f"web-config:{configured_icon}"
-
-    network_icon = resource_path("icons/network.png")
-    if network_icon.exists():
-        return str(network_icon), "web-fallback:network"
-
-    return "", ""
-
-
-def fetch_web_icon(app):
-    source, cache_key = find_web_icon_source(app)
-    if not source:
-        return ""
-    return normalized_icon_path(source, cache_key)
-
-
-def load_config(path: Path):
-    if not path.exists():
-        logging.warning("Config not found at %s, using built-in defaults", path)
-        return normalize_config(DEFAULT_CONFIG)
-
-    try:
-        text = path.read_text(encoding="utf-8")
-        if path.suffix.lower() in (".yml", ".yaml"):
-            if yaml is None:
-                raise RuntimeError("pyyaml is required to load YAML config")
-            return normalize_config(yaml.safe_load(text))
-        if path.suffix.lower() == ".json":
-            return normalize_config(json.loads(text))
-
-        # fallback by heuristic
-        if text.strip().startswith("{"):
-            return normalize_config(json.loads(text))
-        if yaml is None:
-            raise RuntimeError("pyyaml is required to load YAML config")
-        return normalize_config(yaml.safe_load(text))
-    except Exception as e:
-        logging.exception("Failed to load config '%s': %s", path, e)
-        return normalize_config(DEFAULT_CONFIG)
-
-
-def normalize_config(config):
-    normalized = dict(DEFAULT_CONFIG)
-    if isinstance(config, dict):
-        # Deep merge nested dicts instead of shallow replace
-        for key, value in config.items():
-            if key in normalized and isinstance(normalized[key], dict) and isinstance(value, dict):
-                # Merge nested dicts, preserving defaults
-                normalized[key] = {**normalized[key], **value}
-            else:
-                normalized[key] = value
-
-    native_apps = normalized.get("native_apps")
-    web_apps = normalized.get("web_apps")
-    categories = normalized.get("categories")
-    auth = normalized.get("auth")
-    auto_launch = normalized.get("auto_launch")
-    normalized["native_apps"] = native_apps if isinstance(native_apps, list) else list(DEFAULT_CONFIG["native_apps"])
-    normalized["web_apps"] = web_apps if isinstance(web_apps, list) else list(DEFAULT_CONFIG["web_apps"])
-    normalized["categories"] = categories if isinstance(categories, dict) else dict(DEFAULT_CONFIG["categories"])
-    normalized["auth"] = auth if isinstance(auth, dict) else dict(DEFAULT_CONFIG["auth"])
-    normalized["auth"].pop("password_simple_hash", None)  # unsalted secret from older versions
-    normalized["auto_launch"] = auto_launch if isinstance(auto_launch, dict) else dict(DEFAULT_CONFIG["auto_launch"])
-    return normalized
-
-
-def save_config(path: Path, config) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.suffix.lower() in (".yml", ".yaml"):
-        if yaml is None:
-            raise RuntimeError("pyyaml is required to save YAML config")
-        path.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=False), encoding="utf-8")
-    elif path.suffix.lower() == ".json":
-        path.write_text(json.dumps(config, indent=2), encoding="utf-8")
-    elif yaml is not None:
-        path.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=False), encoding="utf-8")
-    else:
-        path.write_text(json.dumps(config, indent=2), encoding="utf-8")
-
-
-def resolve_config_path() -> Path:
-    config_path = Path(os.getenv("LINUXTV_CONFIG", "~/.config/linuxtv/config.yaml")).expanduser()
-    bundled_path = Path(__file__).parent / "config.yaml"
-
-    if config_path.exists():
-        return config_path
-
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    if bundled_path.exists():
-        try:
-            config_path.write_text(bundled_path.read_text(encoding="utf-8"), encoding="utf-8")
-            logging.info("Seeded LinuxTV config at %s from %s", config_path, bundled_path)
-        except Exception:
-            logging.exception("Failed to seed LinuxTV config at %s", config_path)
-
-    return config_path
-
-
-def find_browser():
-    candidates = ["brave-browser", "chromium", "chromium-browser", "google-chrome", "firefox"]
-    for exe in candidates:
-        if shutil.which(exe):
-            return exe
-    return None
-
-
-def is_installed(cmd_or_path: str) -> bool:
-    parts = split_command(cmd_or_path)
-    if not parts:
-        return False
-    executable = parts[0]
-    if Path(executable).is_absolute() and Path(executable).exists():
-        return True
-    return shutil.which(executable) is not None
-
-
-def split_command(command_text: str):
-    try:
-        return shlex.split(command_text)
-    except ValueError:
-        logging.warning("Failed to parse command: %s", command_text)
-        return []
-
-
-def run_command(command):
-    try:
-        result = subprocess.run(command, capture_output=True, text=True, check=False)
-        return result.stdout
-    except Exception as exc:
-        logging.warning("Command failed %s: %s", command, exc)
-        return ""
-
-
-def switch_audio_to_hdmi():
-    pactl = shutil.which("pactl")
-    if not pactl:
-        return False
-
-    sinks_output = run_command([pactl, "list", "short", "sinks"])
-    hdmi_sink = None
-    for line in sinks_output.splitlines():
-        parts = line.split()
-        if len(parts) >= 2 and "hdmi" in parts[1].lower():
-            hdmi_sink = parts[1]
-            break
-
-    if not hdmi_sink:
-        logging.info("No HDMI sink found; leaving audio output unchanged")
-        return False
-
-    logging.info("Switching audio to HDMI sink %s", hdmi_sink)
-    subprocess.run([pactl, "set-default-sink", hdmi_sink], check=False)
-
-    sink_inputs = run_command([pactl, "list", "short", "sink-inputs"])
-    for line in sink_inputs.splitlines():
-        parts = line.split()
-        if parts:
-            subprocess.run([pactl, "move-sink-input", parts[0], hdmi_sink], check=False)
-
-    return True
-
-
-def maintain_hdmi_audio(stop_event: threading.Event, duration_seconds: int = 20):
-    deadline = time.monotonic() + duration_seconds
-    while not stop_event.is_set() and time.monotonic() < deadline:
-        switch_audio_to_hdmi()
-        stop_event.wait(2)
-
-
-def get_current_volume():
-    """Get current system volume percentage"""
-    import re
-    
-    # Try wpctl first
-    wpctl = shutil.which("wpctl")
-    if wpctl:
-        try:
-            result = subprocess.run(
-                [wpctl, "get-volume", "@DEFAULT_AUDIO_SINK@"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                # Output format: "Volume: 0.50" or "Volume: 0.50 [MUTED]"
-                match = re.search(r'Volume:\s+([\d.]+)', result.stdout)
-                if match:
-                    volume = float(match.group(1))
-                    return int(volume * 100)
-        except Exception:
-            pass
-    
-    # Try pactl
-    pactl = shutil.which("pactl")
-    if pactl:
-        try:
-            result = subprocess.run(
-                [pactl, "get-sink-volume", "@DEFAULT_SINK@"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                # Output format: "Volume: front-left: 32768 /  50% / -18.06 dB, ..."
-                match = re.search(r'(\d+)%', result.stdout)
-                if match:
-                    return int(match.group(1))
-        except Exception:
-            pass
-    
-    # Try amixer
-    amixer = shutil.which("amixer")
-    if amixer:
-        try:
-            result = subprocess.run(
-                [amixer, "get", "Master"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                # Output contains: "[50%]" or "[on]"/"[off]"
-                match = re.search(r'\[(\d+)%\]', result.stdout)
-                if match:
-                    return int(match.group(1))
-        except Exception:
-            pass
-    
-    logging.warning("Could not get current volume")
-    return 50  # Default fallback
-
-
-def control_system_volume(action: str, level: int = None):
-    action = action.upper().strip()
-
-    wpctl = shutil.which("wpctl")
-    if wpctl:
-        if action == "SET_VOLUME":
-            target = max(0, min(100, int(level if level is not None else 50)))
-            result = subprocess.run(
-                [wpctl, "set-volume", "-l", "1.5", "@DEFAULT_AUDIO_SINK@", f"{target}%"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                return True
-        elif action == "VOLUME_UP":
-            result = subprocess.run(
-                [wpctl, "set-volume", "-l", "1.5", "@DEFAULT_AUDIO_SINK@", "5%+"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                return True
-        elif action == "VOLUME_DOWN":
-            result = subprocess.run(
-                [wpctl, "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                return True
-        elif action == "MUTE":
-            result = subprocess.run(
-                [wpctl, "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                return True
-
-    pactl = shutil.which("pactl")
-    if pactl:
-        if action == "SET_VOLUME":
-            target = max(0, min(100, int(level if level is not None else 50)))
-            result = subprocess.run(
-                [pactl, "set-sink-volume", "@DEFAULT_SINK@", f"{target}%"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                return True
-        elif action == "VOLUME_UP":
-            result = subprocess.run(
-                [pactl, "set-sink-volume", "@DEFAULT_SINK@", "+5%"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                return True
-        elif action == "VOLUME_DOWN":
-            result = subprocess.run(
-                [pactl, "set-sink-volume", "@DEFAULT_SINK@", "-5%"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                return True
-        elif action == "MUTE":
-            result = subprocess.run(
-                [pactl, "set-sink-mute", "@DEFAULT_SINK@", "toggle"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                return True
-
-    amixer = shutil.which("amixer")
-    if amixer:
-        if action == "SET_VOLUME":
-            target = max(0, min(100, int(level if level is not None else 50)))
-            result = subprocess.run([amixer, "set", "Master", f"{target}%"], check=False, capture_output=True, text=True)
-            if result.returncode == 0:
-                return True
-        elif action == "VOLUME_UP":
-            result = subprocess.run([amixer, "set", "Master", "5%+"], check=False, capture_output=True, text=True)
-            if result.returncode == 0:
-                return True
-        elif action == "VOLUME_DOWN":
-            result = subprocess.run([amixer, "set", "Master", "5%-"], check=False, capture_output=True, text=True)
-            if result.returncode == 0:
-                return True
-        elif action == "MUTE":
-            result = subprocess.run([amixer, "set", "Master", "toggle"], check=False, capture_output=True, text=True)
-            if result.returncode == 0:
-                return True
-
-    logging.warning("No supported volume backend succeeded for action %s", action)
-    return False
-
-
-def control_system_brightness(action: str, level: int = None):
-    """Control screen brightness. action can be 'BRIGHTNESS_UP', 'BRIGHTNESS_DOWN', or 'SET_BRIGHTNESS'"""
-    action = action.upper().strip()
-    
-    # Try brightnessctl first (modern systems)
-    brightnessctl = shutil.which("brightnessctl")
-    if brightnessctl:
-        try:
-            if action == "BRIGHTNESS_UP":
-                result = subprocess.run(
-                    [brightnessctl, "set", "+5%"],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                )
-                if result.returncode == 0:
-                    return True
-            elif action == "BRIGHTNESS_DOWN":
-                result = subprocess.run(
-                    [brightnessctl, "set", "5%-"],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                )
-                if result.returncode == 0:
-                    return True
-            elif action == "SET_BRIGHTNESS" and level is not None:
-                level = max(0, min(100, level))
-                result = subprocess.run(
-                    [brightnessctl, "set", f"{level}%"],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                )
-                if result.returncode == 0:
-                    return True
-        except Exception:
-            pass
-    
-    # Try xrandr as fallback
-    xrandr = shutil.which("xrandr")
-    if xrandr:
-        try:
-            # Get current brightness
-            current_brightness = get_current_brightness()
-            
-            if action == "BRIGHTNESS_UP":
-                new_brightness = min(1.0, current_brightness + 0.05)
-            elif action == "BRIGHTNESS_DOWN":
-                new_brightness = max(0.1, current_brightness - 0.05)
-            elif action == "SET_BRIGHTNESS" and level is not None:
-                level = max(0, min(100, level))
-                new_brightness = level / 100.0
-            else:
-                return False
-            
-            # Get the connected display
-            result = subprocess.run(
-                [xrandr, "--query"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            
-            if result.returncode == 0:
-                display = None
-                for line in result.stdout.splitlines():
-                    if " connected" in line:
-                        display = line.split()[0]
-                        break
-                
-                if display:
-                    result = subprocess.run(
-                        [xrandr, "--output", display, "--brightness", str(new_brightness)],
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                    )
-                    if result.returncode == 0:
-                        return True
-        except Exception:
-            pass
-    
-    return False
-
-
-def get_current_brightness() -> float:
-    """Get current screen brightness level (0.0 to 1.0)"""
-    # Try brightnessctl first
-    brightnessctl = shutil.which("brightnessctl")
-    if brightnessctl:
-        try:
-            result = subprocess.run(
-                [brightnessctl, "get"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                current = int(result.stdout.strip())
-                result_max = subprocess.run(
-                    [brightnessctl, "max"],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                )
-                if result_max.returncode == 0:
-                    max_val = int(result_max.stdout.strip())
-                    if max_val > 0:
-                        return current / max_val
-        except Exception:
-            pass
-    
-    # Default to 1.0 (100%) if cannot determine
-    return 1.0
-
-
-def process_tree_pids(root_pid: int):
-    output = run_command(["ps", "-eo", "pid=,ppid="])
-    children_by_parent = {}
-    for line in output.splitlines():
-        parts = line.split()
-        if len(parts) != 2:
-            continue
-        try:
-            pid = int(parts[0])
-            ppid = int(parts[1])
-        except ValueError:
-            continue
-        children_by_parent.setdefault(ppid, []).append(pid)
-
-    seen = set()
-    pending = [root_pid]
-    while pending:
-        current = pending.pop()
-        if current in seen:
-            continue
-        seen.add(current)
-        pending.extend(children_by_parent.get(current, []))
-    return seen
-
-
-def find_window_ids_for_pid(pid: int):
-    wmctrl = shutil.which("wmctrl")
-    if not wmctrl:
-        return []
-
-    tracked_pids = process_tree_pids(pid)
-    output = run_command([wmctrl, "-lp"])
-    window_ids = []
-    for line in output.splitlines():
-        parts = line.split(None, 4)
-        if len(parts) < 3:
-            continue
-        try:
-            line_pid = int(parts[2])
-        except ValueError:
-            continue
-        if line_pid in tracked_pids:
-            window_ids.append(parts[0])
-    return window_ids
-
-
-def native_app_profile(command):
-    if not command:
-        return ""
-
-    executable = Path(command[0]).name.lower()
-    if executable == "flatpak" and len(command) >= 3 and command[1] == "run":
-        app_id = command[2].lower()
-        if "stremio" in app_id:
-            return "stremio"
-        if "vlc" in app_id:
-            return "vlc"
-        return app_id
-
-    if "stremio" in executable:
-        return "stremio"
-    if executable == "vlc":
-        return "vlc"
-    return executable
-
-
-def enforce_native_fullscreen(command, pid: int, geometry, stop_event: threading.Event, attempts: int = 8):
-    if not command:
-        return
-
-    app_profile = native_app_profile(command)
-    preferred_f11 = app_profile in {"stremio", "vlc"}
-    wmctrl = shutil.which("wmctrl")
-    xdotool = shutil.which("xdotool")
-    target_width = geometry.width() + (2 if app_profile == "stremio" else 0)
-    target_height = geometry.height() + (2 if app_profile == "stremio" else 0)
-    f11_applied_windows = set()
-
-    for _ in range(attempts):
-        if stop_event.wait(1.2):
-            return
-
-        window_ids = find_window_ids_for_pid(pid)
-        if not window_ids:
-            continue
-
-        for window_id in window_ids:
-            if wmctrl:
-                subprocess.run(
-                    [
-                        wmctrl,
-                        "-i",
-                        "-r",
-                        window_id,
-                        "-e",
-                        f"0,{geometry.x()},{geometry.y()},{target_width},{target_height}",
-                    ],
-                    check=False,
-                )
-                subprocess.run([wmctrl, "-i", "-a", window_id], check=False)
-                subprocess.run([wmctrl, "-i", "-r", window_id, "-b", "add,maximized_vert,maximized_horz"], check=False)
-                subprocess.run([wmctrl, "-i", "-r", window_id, "-b", "remove,maximized_vert,maximized_horz"], check=False)
-                subprocess.run([wmctrl, "-i", "-r", window_id, "-b", "add,fullscreen"], check=False)
-
-            if xdotool:
-                subprocess.run([xdotool, "windowmove", window_id, str(geometry.x()), str(geometry.y())], check=False)
-                subprocess.run([xdotool, "windowsize", window_id, str(target_width), str(target_height)], check=False)
-
-            if preferred_f11 and xdotool and window_id not in f11_applied_windows:
-                subprocess.run([xdotool, "windowactivate", "--sync", window_id], check=False)
-                subprocess.run([xdotool, "key", "--window", window_id, "F11"], check=False)
-                f11_applied_windows.add(window_id)
-
-
-def request_system_power_action(action: str):
-    command_map = {
-        "SHUTDOWN": ["systemctl", "poweroff"],
-        "REBOOT": ["systemctl", "reboot"],
-        "SLEEP": ["systemctl", "suspend"],
-    }
-    command = command_map.get(action.upper())
-    if not command:
-        logging.warning("Unknown system power action requested: %s", action)
-        return False
-
-    try:
-        subprocess.Popen(command)
-        logging.info("Triggered system power action: %s", action)
-        return True
-    except Exception:
-        logging.exception("Failed to trigger system power action: %s", action)
-        return False
-
-
-def request_system_update():
-    """Trigger system update using apt, auto-password only for linuxtv user"""
-    # Check if apt is available
-    apt = shutil.which("apt")
-    if not apt:
-        logging.warning("apt is not available on this system")
-        return False, "apt is not available on this system"
-    
-    try:
-        # Use a terminal emulator if available
-        terminal_emulators = ["gnome-terminal", "x-terminal-emulator", "xterm", "konsole"]
-        terminal = None
-        for term in terminal_emulators:
-            if shutil.which(term):
-                terminal = term
-                break
-        
-        # Check current username - only auto-password for linuxtv user
-        current_user = os.environ.get("USER") or os.environ.get("LOGNAME") or ""
-        
-        if current_user == "linuxtv":
-            # Auto-fill password for linuxtv user
-            update_command = "echo 'linuxtv' | sudo -S apt update && echo 'linuxtv' | sudo -S apt upgrade -y"
-        else:
-            # Let user enter password manually
-            update_command = "sudo apt update && sudo apt upgrade -y"
-        
-        if terminal:
-            # Run in terminal so user can see progress
-            if terminal == "gnome-terminal":
-                subprocess.Popen([terminal, "--", "bash", "-c", f"{update_command}; echo 'Update complete. Press Enter to close.'; read"])
-            else:
-                subprocess.Popen([terminal, "-e", f"bash -c '{update_command}; echo Update complete. Press Enter to close.; read'"])
-            logging.info("Triggered system update in terminal (user: %s)", current_user)
-            return True, "System update started in terminal"
-        else:
-            # No terminal available, run silently
-            subprocess.Popen(["bash", "-c", update_command])
-            logging.info("Triggered system update (no terminal available, user: %s)", current_user)
-            return True, "System update started (check terminal for progress)"
-    except Exception as e:
-        logging.exception("Failed to trigger system update")
-        return False, f"Failed to start update: {e}"
-
-
-class InputDeviceGrabber(threading.Thread):
-    """Captures input events from remote control devices system-wide using evdev."""
-    
-    def __init__(self, launcher_window):
-        super().__init__(daemon=True)
-        self.launcher_window = launcher_window
-        self.running = False
-        self.devices = []
-        self._stop_event = threading.Event()
-        
-    def start_grabbing(self):
-        """Start capturing input events from remote control devices."""
-        try:
-            import evdev
-        except ImportError:
-            logging.warning("evdev not installed; global input grabbing disabled")
-            return False
-            
-        self.running = True
-        self.devices = []
-        
-        # Find all input devices
-        for path in evdev.list_devices():
-            try:
-                device = evdev.InputDevice(path)
-                caps = device.capabilities()
-                
-                # Look for devices that are likely remote controls
-                # Remote controls typically have navigation keys but not full keyboard
-                if evdev.ecodes.EV_KEY in caps:
-                    key_codes = caps[evdev.ecodes.EV_KEY]
-                    
-                    # Check if this looks like a remote control
-                    # Remote controls usually have directional keys, OK/Enter, back, etc.
-                    has_directional = any(code in key_codes for code in [
-                        evdev.ecodes.KEY_UP, evdev.ecodes.KEY_DOWN,
-                        evdev.ecodes.KEY_LEFT, evdev.ecodes.KEY_RIGHT
-                    ])
-                    has_enter = evdev.ecodes.KEY_ENTER in key_codes or evdev.ecodes.KEY_KPENTER in key_codes
-                    
-                    # Check if it's NOT a full keyboard (doesn't have letter keys)
-                    has_letters = any(code in key_codes for code in [
-                        evdev.ecodes.KEY_A, evdev.ecodes.KEY_B, evdev.ecodes.KEY_C,
-                        evdev.ecodes.KEY_Q, evdev.ecodes.KEY_W, evdev.ecodes.KEY_E
-                    ])
-                    
-                    # Grab if it looks like a remote (has directional + enter, but not full keyboard)
-                    if has_directional and (has_enter or len(key_codes) < 50) and not has_letters:
-                        try:
-                            device.grab()  # Grab exclusive access
-                            self.devices.append(device)
-                            logging.info("Grabbed remote control device: %s (%s)", device.name, path)
-                        except Exception as e:
-                            logging.warning("Failed to grab device %s: %s", path, e)
-                    elif has_directional and has_letters:
-                        # It's a keyboard - don't grab it exclusively
-                        logging.debug("Skipping keyboard device: %s (%s)", device.name, path)
-                        
-            except Exception as e:
-                logging.warning("Failed to check device %s: %s", path, e)
-                
-        if not self.devices:
-            logging.info("No remote control devices found to grab (this is OK if using keyboard)")
-            return False
-            
-        self.start()
-        return True
-        
-    def stop_grabbing(self):
-        """Stop capturing input events."""
-        self._stop_event.set()
-        self.running = False
-        for device in self.devices:
-            try:
-                device.ungrab()
-            except Exception:
-                pass
-        self.devices.clear()
-        
-    def run(self):
-        """Main loop to read and process input events."""
-        try:
-            import evdev
-            from select import select
-        except ImportError:
-            return
-            
-        while self.running and not self._stop_event.is_set():
-            try:
-                # Wait for events from any device
-                readable, _, _ = select(self.devices, [], [], 0.5)
-                for device in readable:
-                    if self._stop_event.is_set():
-                        break
-                    try:
-                        for event in device.read():
-                            if event.type == evdev.ecodes.EV_KEY:
-                                self._handle_key_event(event)
-                    except Exception as e:
-                        logging.debug("Error reading from device: %s", e)
-            except Exception as e:
-                logging.debug("Error in input grabber loop: %s", e)
-                
-    def _handle_key_event(self, event):
-        """Handle a key event and forward to launcher."""
-        try:
-            import evdev
-            from evdev import ecodes
-        except ImportError:
-            return
-            
-        # Only process key press events (not release)
-        if event.value != 1:  # 1 = press, 0 = release, 2 = repeat
-            return
-            
-        key_code = event.code
-        key_name = ecodes.KEY[key_code] if key_code in ecodes.KEY else None
-        
-        if not key_name:
-            return
-            
-        # Map common remote control keys to actions
-        action_map = {
-            'KEY_UP': 'UP',
-            'KEY_DOWN': 'DOWN',
-            'KEY_LEFT': 'LEFT',
-            'KEY_RIGHT': 'RIGHT',
-            'KEY_ENTER': 'SELECT',
-            'KEY_KPENTER': 'SELECT',
-            'KEY_SPACE': 'SELECT',
-            'KEY_BACKSPACE': 'BACK',
-            'KEY_ESC': 'BACK',
-            'KEY_HOME': 'HOME',
-            'KEY_MENU': 'MENU',
-            'KEY_INFO': 'INFO',
-            'KEY_PLAYPAUSE': 'PLAY_PAUSE',
-            'KEY_PLAY': 'PLAY_PAUSE',
-            'KEY_PAUSE': 'PLAY_PAUSE',
-            'KEY_TAB': 'TAB',
-        }
-        
-        action = action_map.get(key_name)
-        if action:
-            logging.debug("Remote key pressed: %s -> %s", key_name, action)
-            # Queue the action for processing by the main thread
-            self.launcher_window.queue_remote_action(action)
-
-
-class WebSocketControlServer(threading.Thread):
-    def __init__(self, window, host=None, port=None):
-        super().__init__(daemon=True)
-        self.window = window
-        # Default to 0.0.0.0 to allow remote connections, allow override via config
-        ws_config = window.config.get("websocket", {})
-        config_host = ws_config.get("host", "0.0.0.0")
-        config_port = ws_config.get("port", 8765)
-        self.host = host if host is not None else config_host
-        self.port = port if port is not None else config_port
-        
-        self.loop = None
-        self.server = None
-        self._stop_event = threading.Event()
-        self.gate = remote_auth.AuthGate(window.config, self._persist_config)
-        logging.warning("Remote pairing code: %s (needed only until a phone is paired)", self.gate.pairing_code)
-
-    @property
-    def pairing_code(self):
-        return self.gate.pairing_code
-
-    def _persist_config(self):
-        try:
-            save_config(self.window.config_path, self.window.config)
-        except Exception:
-            logging.exception("Failed to persist remote auth config")
-
-    async def _send_apps_list(self, websocket):
-        await websocket.send(json.dumps({
-            "status": "ok",
-            "type": "apps_list",
-            "apps": self.window.get_installed_apps(),
-        }))
-
-    async def handler(self, websocket, path=None):
-        remote = websocket.remote_address
-        client = remote[0] if remote else "unknown"
-        logging.info("WebSocket connection from %s", remote)
-        authenticated = False
-
-        try:
-            async for message in websocket:
-                try:
-                    payload = json.loads(message)
-                    message_type = str(payload.get("type", "")).lower()
-                except Exception:
-                    payload = {}
-                    message_type = ""
-                if message_type not in ("auth", "auth_token", "pair"):
-                    logging.info("Received remote action: %s", message_type or "<invalid>")
-
-                if message_type in remote_auth.AUTH_MESSAGE_TYPES:
-                    reply, granted = self.gate.handle(client, message_type, payload)
-                    await websocket.send(json.dumps(reply))
-                    if granted:
-                        authenticated = True
-                        await self._send_apps_list(websocket)
-                    continue
-
-                if not authenticated:
-                    await websocket.send(json.dumps(self.gate.required()))
-                    continue
-
-                if message_type == "text":
-                    text = str(payload.get("text", ""))
-                    if text:
-                        self.window.queue_remote_event({"type": "text", "text": text})
-                        await websocket.send(json.dumps({"status": "ok", "type": "text"}))
-                    else:
-                        await websocket.send(json.dumps({"status": "error", "error": "invalid text"}))
-                    continue
-
-                if message_type == "key":
-                    key = str(payload.get("key", "")).upper()
-                    if key:
-                        modifiers = payload.get("modifiers") or []
-                        self.window.queue_remote_event({"type": "key", "key": key, "modifiers": modifiers})
-                        await websocket.send(json.dumps({"status": "ok", "type": "key", "key": key}))
-                    else:
-                        await websocket.send(json.dumps({"status": "error", "error": "invalid key"}))
-                    continue
-
-                if message_type == "pointer":
-                    event_type = str(payload.get("event", "")).lower()
-                    if event_type == "move":
-                        try:
-                            dx = int(round(float(payload.get("dx", 0))))
-                            dy = int(round(float(payload.get("dy", 0))))
-                        except (TypeError, ValueError):
-                            dx = 0
-                            dy = 0
-
-                        if dx or dy:
-                            self.window.queue_remote_event(
-                                {"type": "pointer", "event": "move", "dx": dx, "dy": dy}
-                            )
-                            await websocket.send(
-                                json.dumps({"status": "ok", "type": "pointer", "event": "move"})
-                            )
-                        else:
-                            await websocket.send(json.dumps({"status": "error", "error": "invalid move"}))
-                    elif event_type in ("tap", "click", "right_click"):
-                        self.window.queue_remote_event({"type": "pointer", "event": event_type})
-                        await websocket.send(
-                            json.dumps({"status": "ok", "type": "pointer", "event": event_type})
-                        )
-                    elif event_type == "scroll":
-                        try:
-                            dx = int(round(float(payload.get("dx", 0))))
-                            dy = int(round(float(payload.get("dy", 0))))
-                        except (TypeError, ValueError):
-                            dx = 0
-                            dy = 0
-
-                        if dx or dy:
-                            self.window.queue_remote_event(
-                                {"type": "pointer", "event": "scroll", "dx": dx, "dy": dy}
-                            )
-                            await websocket.send(
-                                json.dumps({"status": "ok", "type": "pointer", "event": "scroll"})
-                            )
-                        else:
-                            await websocket.send(json.dumps({"status": "error", "error": "invalid scroll"}))
-                    else:
-                        await websocket.send(json.dumps({"status": "error", "error": "invalid pointer event"}))
-                    continue
-
-                # Handle app listing request
-                if message_type == "get_apps" or str(payload.get("action", "")).upper() == "GET_APPS":
-                    apps_list = self.window.get_installed_apps()
-                    await websocket.send(json.dumps({
-                        "status": "ok",
-                        "type": "apps_list",
-                        "apps": apps_list
-                    }))
-                    continue
-
-                # Handle add app request
-                if message_type == "add_app":
-                    app_kind = str(payload.get("kind", ""))
-                    app_name = str(payload.get("name", "")).strip()
-                    
-                    if not app_name:
-                        await websocket.send(json.dumps({"status": "error", "error": "app name required"}))
-                        continue
-                    
-                    if app_kind == "native":
-                        app_command = str(payload.get("command", "")).strip()
-                        if not app_command:
-                            await websocket.send(json.dumps({"status": "error", "error": "command required for native app"}))
-                            continue
-
-                        # Actually mutating config/QML state has to happen on the
-                        # Qt main thread; this handler runs on the asyncio thread,
-                        # where a bare QTimer.singleShot never fires (no Qt event
-                        # loop pumping it there). Go through the same thread-safe
-                        # queue the D-pad/text/pointer remote events already use.
-                        self.window.queue_remote_event({
-                            "type": "add_app", "kind": "native", "name": app_name, "command": app_command
-                        })
-                        logging.info("Queued add native app: %s (%s)", app_name, app_command)
-
-                    elif app_kind == "web":
-                        app_url = str(payload.get("url", "")).strip()
-                        if not app_url:
-                            await websocket.send(json.dumps({"status": "error", "error": "url required for web app"}))
-                            continue
-
-                        self.window.queue_remote_event({
-                            "type": "add_app", "kind": "web", "name": app_name, "url": app_url
-                        })
-                        logging.info("Queued add web app: %s (%s)", app_name, app_url)
-
-                    await websocket.send(json.dumps({"status": "ok", "type": "app_added"}))
-                    continue
-
-                # Handle remove app request
-                if message_type == "remove_app":
-                    app_id = str(payload.get("id", "")).strip()
-
-                    if not app_id:
-                        await websocket.send(json.dumps({"status": "error", "error": "app id required"}))
-                        continue
-
-                    self.window.queue_remote_event({"type": "remove_app", "id": app_id})
-                    logging.info("Queued remove app: %s", app_id)
-
-                    await websocket.send(json.dumps({
-                        "status": "ok",
-                        "type": "app_removed",
-                        "message": f"App removed successfully"
-                    }))
-                    continue
-
-                # Handle reorder app request
-                if message_type == "reorder_app":
-                    app_id = str(payload.get("id", "")).strip()
-                    app_kind = str(payload.get("kind", ""))
-                    direction = str(payload.get("direction", "")).lower()
-
-                    if not app_id or app_kind not in ("native", "web") or direction not in ("left", "right"):
-                        await websocket.send(json.dumps({"status": "error", "error": "invalid reorder request"}))
-                        continue
-
-                    self.window.queue_remote_event({
-                        "type": "reorder_app", "id": app_id, "kind": app_kind, "direction": direction
-                    })
-                    logging.info("Queued reorder app: %s %s", app_id, direction)
-
-                    await websocket.send(json.dumps({"status": "ok", "type": "app_reordered"}))
-                    continue
-
-                # Handle app launch request
-                action = str(payload.get("action", ""))
-                if action.startswith("LAUNCH_APP:"):
-                    app_id = action.replace("LAUNCH_APP:", "")
-                    logging.info("Launching app from remote: %s", app_id)
-                    self.window.launch_app_by_id(app_id)
-                    await websocket.send(json.dumps({"status": "ok", "action": "launch_app", "app_id": app_id}))
-                    continue
-
-                # Handle WiFi settings request
-                if message_type == "get_wifi":
-                    try:
-                        networks, current_wifi, message = self.window.scan_wifi_networks()
-                        await websocket.send(json.dumps({
-                            "status": "ok",
-                            "type": "wifi_list",
-                            "networks": networks,
-                            "current_wifi": current_wifi,
-                            "message": message
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to scan WiFi from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "wifi_list",
-                            "message": f"Failed to scan WiFi: {exc}"
-                        }))
-                    continue
-
-                # Handle WiFi connect request
-                if message_type == "connect_wifi":
-                    ssid = str(payload.get("ssid", ""))
-                    password = str(payload.get("password", ""))
-                    security = str(payload.get("security", ""))
-                    try:
-                        success, message, current_wifi = self.window.connect_to_wifi(
-                            {"ssid": ssid, "security": security}, password
-                        )
-                        await websocket.send(json.dumps({
-                            "status": "ok" if success else "error",
-                            "type": "wifi_connected",
-                            "success": success,
-                            "message": message,
-                            "current_wifi": current_wifi
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to connect WiFi from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "wifi_connected",
-                            "message": f"Failed to connect WiFi: {exc}"
-                        }))
-                    continue
-
-                # Handle Bluetooth settings request
-                if message_type == "get_bluetooth":
-                    try:
-                        devices, current_bluetooth, message = self.window.scan_bluetooth_devices()
-                        await websocket.send(json.dumps({
-                            "status": "ok",
-                            "type": "bluetooth_list",
-                            "devices": devices,
-                            "current_bluetooth": current_bluetooth,
-                            "message": message
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to scan Bluetooth from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "bluetooth_list",
-                            "message": f"Failed to scan Bluetooth: {exc}"
-                        }))
-                    continue
-
-                # Handle Bluetooth connect request
-                if message_type == "connect_bluetooth":
-                    mac = str(payload.get("mac", ""))
-                    name = str(payload.get("name", ""))
-                    try:
-                        success, message, current_bluetooth = self.window.connect_to_bluetooth(
-                            {"mac": mac, "name": name}
-                        )
-                        await websocket.send(json.dumps({
-                            "status": "ok" if success else "error",
-                            "type": "bluetooth_connected",
-                            "success": success,
-                            "message": message,
-                            "current_bluetooth": current_bluetooth
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to connect Bluetooth from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "bluetooth_connected",
-                            "message": f"Failed to connect Bluetooth: {exc}"
-                        }))
-                    continue
-
-                # Handle Bluetooth remove request
-                if message_type == "remove_bluetooth":
-                    mac = str(payload.get("mac", ""))
-                    try:
-                        success, message = self.window.remove_bluetooth_device({"mac": mac})
-                        await websocket.send(json.dumps({
-                            "status": "ok" if success else "error",
-                            "type": "bluetooth_removed",
-                            "success": success,
-                            "message": message
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to remove Bluetooth from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "bluetooth_removed",
-                            "message": f"Failed to remove Bluetooth: {exc}"
-                        }))
-                    continue
-
-                # Handle Sound settings request
-                if message_type == "get_sound":
-                    try:
-                        speakers = self.window.get_audio_sinks()
-                        default_sink = self.window.get_default_audio_sink()
-                        message = f"Found {len(speakers)} audio device(s)" if speakers else "No audio devices found"
-                        await websocket.send(json.dumps({
-                            "status": "ok",
-                            "type": "sound_list",
-                            "speakers": speakers,
-                            "default_sink": default_sink,
-                            "message": message
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to get sound devices from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "sound_list",
-                            "message": f"Failed to get sound devices: {exc}"
-                        }))
-                    continue
-
-                # Handle Sound default set request
-                if message_type == "set_sound":
-                    sink_name = str(payload.get("sink", ""))
-                    try:
-                        success = self.window.set_default_audio_sink(sink_name)
-                        await websocket.send(json.dumps({
-                            "status": "ok" if success else "error",
-                            "type": "sound_set",
-                            "success": success,
-                            "message": "Default audio device updated" if success else "Failed to set default audio device"
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to set sound device from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "sound_set",
-                            "message": f"Failed to set sound device: {exc}"
-                        }))
-                    continue
-
-                # Handle Volume get request
-                if message_type == "get_volume":
-                    try:
-                        current_volume = get_current_volume()
-                        await websocket.send(json.dumps({
-                            "status": "ok",
-                            "type": "volume_level",
-                            "volume": current_volume,
-                            "message": f"Current volume: {current_volume}%"
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to get volume from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "volume_level",
-                            "message": f"Failed to get volume: {exc}"
-                        }))
-                    continue
-
-                # Handle Volume set request
-                if message_type == "set_volume":
-                    volume_level = int(payload.get("volume", 50))
-                    try:
-                        success = control_system_volume("SET_VOLUME", volume_level)
-                        await websocket.send(json.dumps({
-                            "status": "ok" if success else "error",
-                            "type": "volume_set",
-                            "success": success,
-                            "volume": volume_level,
-                            "message": f"Volume set to {volume_level}%" if success else "Failed to set volume"
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to set volume from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "volume_set",
-                            "message": f"Failed to set volume: {exc}"
-                        }))
-                    continue
-
-                # Handle Brightness get request
-                if message_type == "get_brightness":
-                    try:
-                        current_brightness = int(get_current_brightness() * 100)
-                        await websocket.send(json.dumps({
-                            "status": "ok",
-                            "type": "brightness_level",
-                            "brightness": current_brightness,
-                            "message": f"Current brightness: {current_brightness}%"
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to get brightness from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "brightness_level",
-                            "message": f"Failed to get brightness: {exc}"
-                        }))
-                    continue
-
-                # Handle Brightness set request
-                if message_type == "set_brightness":
-                    brightness_level = int(payload.get("brightness", 50))
-                    try:
-                        success = control_system_brightness("SET_BRIGHTNESS", brightness_level)
-                        await websocket.send(json.dumps({
-                            "status": "ok" if success else "error",
-                            "type": "brightness_set",
-                            "success": success,
-                            "brightness": brightness_level,
-                            "message": f"Brightness set to {brightness_level}%" if success else "Failed to set brightness"
-                        }))
-                    except Exception as exc:
-                        logging.exception("Failed to set brightness from remote")
-                        await websocket.send(json.dumps({
-                            "status": "error",
-                            "type": "brightness_set",
-                            "message": f"Failed to set brightness: {exc}"
-                        }))
-                    continue
-
-                action = action.upper()
-                if action:
-                    self.window.queue_remote_action(action)
-                    await websocket.send(json.dumps({"status": "ok", "action": action}))
-                else:
-                    await websocket.send(json.dumps({"status": "error", "error": "invalid action"}))
-        except Exception as exc:
-            logging.warning("WebSocket client disconnected: %s", exc)
-
-    async def _run_server(self):
-        if websockets is None:
-            logging.error("websockets library not installed; remote control disabled")
-            return
-        
-        self.server = await websockets.serve(
-            self.handler, 
-            self.host, 
-            self.port
-        )
-        
-        logging.info("WebSocket remote server started on ws://%s:%s", self.host, self.port)
-        try:
-            await self.server.wait_closed()
-        except asyncio.CancelledError:
-            pass
-
-    def run(self):
-        if websockets is None:
-            return
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        try:
-            self.loop.run_until_complete(self._run_server())
-            self.loop.run_forever()
-        except RuntimeError:
-            # Event loop was stopped before future completed - this is expected during shutdown
-            pass
-        finally:
-            # Ensure all tasks are cancelled before closing
-            if self.loop.is_running():
-                self.loop.stop()
-            pending = asyncio.all_tasks(self.loop)
-            if pending:
-                self.loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-            self.loop.close()
-
-    def stop(self):
-        self._stop_event.set()
-        if self.loop and self.loop.is_running():
-            # Close the server first
-            if self.server:
-                self.server.close()
-                self.loop.call_soon_threadsafe(lambda: self.loop.create_task(self.server.wait_closed()))
-            # Then stop the loop
-            self.loop.call_soon_threadsafe(self.loop.stop)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class IconUpdateBridge(QObject):
@@ -2789,7 +1023,6 @@ class LauncherWindow(QMainWindow):
 
     def get_installed_apps(self):
         """Get list of installed apps for remote control app listing"""
-        import base64
         apps_list = []
         categories = self.get_categorized_entries()
         
@@ -2907,7 +1140,6 @@ class LauncherWindow(QMainWindow):
             
             # Find the app in desktop files for native apps
             if app_kind == "native":
-                from pathlib import Path
                 desktop_dirs = desktop_file_locations()
                 app_entry = None
                 
@@ -2950,7 +1182,7 @@ class LauncherWindow(QMainWindow):
                     return False, f"Could not find {app_name} on your system"
             
             # For web apps, they should already be in config
-            return False, f"Web apps must be added through settings"
+            return False, "Web apps must be added through settings"
             
         except Exception as e:
             logging.exception("Failed to add app")
@@ -3884,23 +2116,6 @@ class LauncherWindow(QMainWindow):
             if rfkill_path:
                 subprocess.run([rfkill_path, "unblock", "bluetooth"], capture_output=True, check=False, timeout=5)
             
-            # Check current controller state
-            show_result = subprocess.run(
-                [bluetoothctl, "show"],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=10
-            )
-            
-            bluetooth_was_off = True
-            if show_result.returncode == 0:
-                for line in show_result.stdout.splitlines():
-                    if 'Powered:' in line:
-                        if 'yes' in line.lower():
-                            bluetooth_was_off = False
-                        break
-            
             # Power on the controller - this will turn on Bluetooth if it's off
             if bt_proc.stdin:
                 bt_proc.stdin.write("power on\n")
@@ -4432,7 +2647,7 @@ class LauncherWindow(QMainWindow):
         except Exception as exc:
             logging.exception("Failed to save config")
             if notify:
-                QTimer.singleShot(0, lambda: QMessageBox.critical(self, "Save Failed", f"Could not save config:\n{exc}"))
+                QTimer.singleShot(0, lambda msg=str(exc): QMessageBox.critical(self, "Save Failed", f"Could not save config:\n{msg}"))
             native_apps.pop()
             return
 
@@ -4452,7 +2667,7 @@ class LauncherWindow(QMainWindow):
         except Exception as exc:
             logging.exception("Failed to save config")
             if notify:
-                QTimer.singleShot(0, lambda: QMessageBox.critical(self, "Save Failed", f"Could not save config:\n{exc}"))
+                QTimer.singleShot(0, lambda msg=str(exc): QMessageBox.critical(self, "Save Failed", f"Could not save config:\n{msg}"))
             web_apps.pop()
             return
 

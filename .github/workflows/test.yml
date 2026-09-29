@@ -15,6 +15,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
+      - run: ruff check  # pyflakes + syntax errors only, see ruff.toml
       - run: pytest -q
 
   remote-app:

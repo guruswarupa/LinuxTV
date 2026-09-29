@@ -1,0 +1,6 @@
+# Deliberately small: real bugs (pyflakes F) and syntax errors, no style/format rules.
+target-version = "py311"
+extend-exclude = ["iso-builder/workdir", "linuxtvremote"]
+
+[lint]
+select = ["F", "E9"]

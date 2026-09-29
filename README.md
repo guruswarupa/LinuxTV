@@ -31,7 +31,7 @@ A TV-first Linux distro: boot into a fullscreen, remote-friendly app launcher in
 
 LinuxTV is three things working together:
 
-- **`linuxtvdesktop/`** — the launcher itself. A Qt Quick (QML) home screen hosted in a Python/PyQt5-PySide6 app: banner app cards with focus zoom and glow, an ambient background that follows the focused app, live search, drag-to-reorder, favorites, and in-scene settings panels for Wi-Fi, Bluetooth, sound, brightness, remote login, and system updates — no old-style popup windows.
+- **`linuxtvdesktop/`** — the launcher itself. A Qt Quick (QML) home screen hosted in a Python app that runs on either PyQt5 or PySide6 (PyQt5 is preferred on Linux; set `LINUXTV_QT_BINDING` to force one): banner app cards with focus zoom and glow, an ambient background that follows the focused app, live search, drag-to-reorder, favorites, and in-scene settings panels for Wi-Fi, Bluetooth, sound, brightness, remote login, and system updates — no old-style popup windows.
 - **`linuxtvremote/`** — the phone remote (Android, React Native/Expo). D-pad and touchpad control, a keyboard with modifier keys and shortcuts, macro record/replay, volume/brightness sliders, and full app management (add/remove/reorder) from your phone, all talking to the desktop over a WebSocket.
 - **`iso-builder/`** — the Debian trixie live-build config that produces the bootable ISO, plus a cross-platform (Windows/macOS/Linux) flash tool that writes it to a USB stick and sets up a persistence partition so changes survive a reboot.
 
@@ -54,6 +54,18 @@ A normal desktop isn't built for a TV: icons and windows are too small from acro
 
 - **ISO + remote APK**: [GitHub Releases](https://github.com/guruswarupa/LinuxTV/releases/tag/latest) (mirrored on [SourceForge](https://sourceforge.net/projects/linuxtv/files/release/))
 - **Flash tool**: `linuxtv-flash-tool.py` (or the platform-specific `flash-tool-*` script) from the same release — writes the ISO to a USB stick and sets up the persistence partition for you. See [`iso-builder/USB-GUIDE.md`](iso-builder/USB-GUIDE.md).
+
+### Verify your download
+
+Each release file has a checksum published next to it. Download it into the same folder and check before flashing:
+
+```bash
+sha256sum -c LinuxTV.iso.sha256          # ISO
+sha256sum -c LinuxTVRemote.apk.sha256    # phone app
+sha256sum -c flash-tools.sha256          # flash tool bundle
+```
+
+On Windows: `certutil -hashfile LinuxTV.iso SHA256` and compare with the value in `LinuxTV.iso.sha256`.
 
 ## Quick start
 

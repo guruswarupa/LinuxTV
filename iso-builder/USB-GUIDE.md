@@ -140,7 +140,9 @@ Once LinuxTV boots:
 3. Set up remote control credentials:
    * Open the LinuxTV settings
    * Navigate to Remote Control section
-   * Set your username and password for remote access
+   * Set your username and password for remote access (8+ characters)
+   * Or leave them empty and pair with the 6-digit pairing code shown on that screen
+     (enter the code in the app's password field the first time you connect)
    * Note the IP address shown on screen
 4. Install the LinuxTV Remote app:
    * Open Google Play Store on your Android phone

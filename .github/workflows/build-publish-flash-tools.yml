@@ -36,6 +36,11 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      # One sums file for the whole tool bundle: sha256sum -c flash-tools.sha256
+      - name: Generate checksums
+        working-directory: iso-builder
+        run: sha256sum linuxtv-flash-tool.py flash-tool-windows.bat flash-tool-linux.sh flash-tool-macos.sh USB-GUIDE.md | tee flash-tools.sha256
+
       - name: Upload as a workflow artifact
         uses: actions/upload-artifact@v4
         with:
@@ -46,6 +51,7 @@ jobs:
             iso-builder/flash-tool-linux.sh
             iso-builder/flash-tool-macos.sh
             iso-builder/USB-GUIDE.md
+            iso-builder/flash-tools.sha256
           retention-days: 30
 
       # Same release/ folder as the ISO and APK -- not a separate subfolder.
@@ -66,6 +72,7 @@ jobs:
             iso-builder/flash-tool-linux.sh \
             iso-builder/flash-tool-macos.sh \
             iso-builder/USB-GUIDE.md \
+            iso-builder/flash-tools.sha256 \
             "${SOURCEFORGE_USER}@frs.sourceforge.net:/home/frs/project/${SOURCEFORGE_PROJECT}/release/"
 
       # Same persistent "latest" release the ISO/APK workflows update.
@@ -82,4 +89,5 @@ jobs:
             iso-builder/flash-tool-windows.bat \
             iso-builder/flash-tool-linux.sh \
             iso-builder/flash-tool-macos.sh \
-            iso-builder/USB-GUIDE.md
+            iso-builder/USB-GUIDE.md \
+            iso-builder/flash-tools.sha256

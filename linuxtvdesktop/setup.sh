@@ -92,7 +92,7 @@ sudo -u "$RUNTIME_USER" python3 -m venv --system-site-packages "$VENV_DIR"
 sudo -u "$RUNTIME_USER" "$VENV_DIR/bin/pip" install --upgrade pip setuptools wheel
 
 echo "Installing Python packages in venv..."
-if sudo -u "$RUNTIME_USER" "$VENV_DIR/bin/pip" install pyyaml websockets PySide6 evdev 2>&1 | tee /tmp/pip_install.log; then
+if sudo -u "$RUNTIME_USER" "$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt" 2>&1 | tee /tmp/pip_install.log; then
   echo "✓ Python packages installed successfully"
 else
   echo "⚠ Warning: pip install had some issues. Check /tmp/pip_install.log"

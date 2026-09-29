@@ -587,7 +587,7 @@ exit
         process.wait()
         
         if process.returncode != 0:
-            error_msg = f"PowerShell flash failed. Output:\n" + "\n".join(output_lines[-20:])
+            error_msg = "PowerShell flash failed. Output:\n" + "\n".join(output_lines[-20:])
             raise Exception(error_msg)
     
     def flash_macos(self, iso_file, device):
@@ -955,7 +955,7 @@ exit
 
 def main():
     root = tk.Tk()
-    app = LinuxTVFlashTool(root)
+    LinuxTVFlashTool(root)
     root.mainloop()
 
 
