@@ -15,6 +15,15 @@ A TV-first Linux distro: boot into a fullscreen, remote-friendly app launcher in
 
 <img src="https://img.shields.io/sourceforge/dt/linuxtv.svg?style=for-the-badge" alt="SourceForge Downloads" />
 
+## LinuxTV Remote
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=com.guruswarupa.launch">
+    <img
+      src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png"
+      height="80"
+    />
+  </a>
+
 </div>
 
 ## Screenshots
