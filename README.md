@@ -17,7 +17,7 @@ A TV-first Linux distro: boot into a fullscreen, remote-friendly app launcher in
 
 ## LinuxTV Remote
 <p align="center">
-  <a href="https://play.google.com/store/apps/details?id=com.guruswarupa.launch">
+  <a href="https://play.google.com/store/apps/details?id=com.guruswarupa.linuxtvremote">
     <img
       src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png"
       height="80"
