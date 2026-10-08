@@ -36,6 +36,16 @@ A TV-first Linux distro: boot into a fullscreen, remote-friendly app launcher in
 
 </div>
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=guruswarupa%2Flinuxtv&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=guruswarupa/linuxtv&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=guruswarupa/linuxtv&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=guruswarupa/linuxtv&type=date&legend=top-left" />
+ </picture>
+</a>
+
 ## What's in the box
 
 LinuxTV is three things working together:
