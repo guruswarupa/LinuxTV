@@ -6,6 +6,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Alert,
+  Animated,
   AppState,
   AppStateStatus,
   DeviceEventEmitter,
@@ -27,7 +28,6 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps, ReactNode } from 'react';
 
 import {
-  DemoRepository,
   type AuthState,
   type ConnectionState,
   type KeyModifier,
@@ -41,7 +41,6 @@ const HOST_KEY = 'linuxtv_remote_host';
 const PORT_KEY = 'linuxtv_remote_port';
 const USERNAME_KEY = 'linuxtv_remote_username';
 const PASSWORD_KEY = 'linuxtv_remote_password';
-const DEMO_MODE_KEY = 'linuxtv_remote_demo_mode';
 const SYSTEMS_KEY = 'linuxtv_remote_systems';
 const ACTIVE_SYSTEM_ID_KEY = 'linuxtv_remote_active_system_id';
 const DEFAULT_PORT = '8765';
@@ -75,7 +74,6 @@ type SavedMacro = {
 const DEFAULT_REPOSITORY_STATE: ScreenRepositoryState = {
   authStatus: 'No saved credentials',
   deviceName: '',
-  isDemoMode: false,
   lastAction: 'None',
   lastMessage: 'Looking for saved LinuxTV remote info',
   status: 'Disconnected',
@@ -152,6 +150,7 @@ export default function RemoteScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [pairWithCode, setPairWithCode] = useState(false);
+  const [isDraggingApp, setIsDraggingApp] = useState(false);
   const [savedSystems, setSavedSystems] = useState<SavedSystem[]>([]);
   const [activeSystemId, setActiveSystemId] = useState<string | null>(null);
   const activeSystem = savedSystems.find((system) => system.id === activeSystemId) ?? null;
@@ -214,11 +213,9 @@ export default function RemoteScreen() {
     setIsRecording(repositoryRef.current?.isRecording() ?? false);
   };
 
-  const createRepository = (isDemoMode: boolean) => {
+  const createRepository = () => {
     repositoryRef.current?.dispose();
-    const nextRepository = isDemoMode
-      ? new DemoRepository(applyRepositoryUpdate)
-      : new RealServerRepository(applyRepositoryUpdate);
+    const nextRepository = new RealServerRepository(applyRepositoryUpdate);
     repositoryRef.current = nextRepository;
     return nextRepository;
   };
@@ -243,59 +240,82 @@ export default function RemoteScreen() {
     setPairWithCode(Boolean(system && !system.username.trim() && system.password));
   };
 
+  const switchAuthMode = (useCode: boolean) => {
+    if (useCode === pairWithCode) return;
+    setPairWithCode(useCode);
+    setUsername('');
+    setPassword('');
+  };
+
   const renderCredentialInputs = () => (
     <>
+      <View style={styles.authToggle}>
+        {([
+          { code: false, icon: 'key-outline', label: 'Username' },
+          { code: true, icon: 'keypad-outline', label: 'Pairing code' },
+        ] as const).map((option) => {
+          const selected = pairWithCode === option.code;
+          return (
+            <Pressable
+              key={option.label}
+              style={[styles.authToggleOption, selected && styles.authToggleOptionActive]}
+              onPress={() => switchAuthMode(option.code)}>
+              <Ionicons name={option.icon} size={16} color={selected ? '#F8FAFC' : '#9FB3D9'} />
+              <Text style={[styles.authToggleText, selected && styles.authToggleTextActive]}>
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
       {pairWithCode ? (
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="6-digit pairing code from the TV"
-          placeholderTextColor="#9FB3D9"
-          keyboardType="number-pad"
-          maxLength={6}
-          autoCorrect={false}
-          style={styles.input}
-        />
+        <>
+          <View style={styles.inputWrap}>
+            <Ionicons name="keypad-outline" size={18} color="#9FB3D9" />
+            <TextInput
+              value={password}
+              onChangeText={(text) => setPassword(text.replace(/\D/g, ''))}
+              placeholder="000000"
+              placeholderTextColor="#5B6F99"
+              keyboardType="number-pad"
+              maxLength={6}
+              autoCorrect={false}
+              style={[styles.inputField, styles.codeInput]}
+            />
+          </View>
+          <Text style={styles.authHint}>
+            Open Settings → Remote Login on the TV to see the 6-digit code.
+          </Text>
+        </>
       ) : (
         <>
-          <TextInput
-            value={username}
-            onChangeText={setUsername}
-            placeholder="Username"
-            placeholderTextColor="#9FB3D9"
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.input}
-          />
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Password"
-            placeholderTextColor="#9FB3D9"
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.input}
-          />
+          <View style={styles.inputWrap}>
+            <Ionicons name="person-outline" size={18} color="#9FB3D9" />
+            <TextInput
+              value={username}
+              onChangeText={setUsername}
+              placeholder="Username"
+              placeholderTextColor="#5B6F99"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.inputField}
+            />
+          </View>
+          <View style={styles.inputWrap}>
+            <Ionicons name="lock-closed-outline" size={18} color="#9FB3D9" />
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              placeholderTextColor="#5B6F99"
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.inputField}
+            />
+          </View>
         </>
       )}
-      <Pressable
-        onPress={() => {
-          setPairWithCode((current) => !current);
-          setUsername('');
-          setPassword('');
-        }}>
-        <Text style={styles.secondaryButtonText}>
-          {pairWithCode
-            ? 'Use username & password instead'
-            : 'No password set? Pair with a code'}
-        </Text>
-      </Pressable>
-      {pairWithCode ? (
-        <Text style={styles.secondaryButtonText}>
-          Open Settings → Remote Login on the TV to see the code.
-        </Text>
-      ) : null}
     </>
   );
 
@@ -333,13 +353,12 @@ export default function RemoteScreen() {
   };
 
   const connectToSystem = async (system: SavedSystem) => {
-    const repository = createRepository(false);
+    const repository = createRepository();
     applyRepositoryUpdate({
       authStatus:
         system.username.trim() && system.password
           ? 'Saved credentials loaded'
           : 'No saved credentials',
-      isDemoMode: false,
       lastMessage: `Saved ${system.ipAddress}:${system.port}. Waiting for LinuxTV.`,
     });
 
@@ -349,23 +368,6 @@ export default function RemoteScreen() {
       port: system.port,
       username: system.username,
     });
-  };
-
-  const activateDemoMode = async (persist = true) => {
-    const repository = createRepository(true);
-    if (persist) {
-      await Promise.all([
-        SecureStore.setItemAsync(DEMO_MODE_KEY, 'true'),
-        persistSystems([], null),
-      ]);
-    }
-    setSavedSystems([]);
-    setActiveSystemId(null);
-    populateFormFromSystem(null);
-    setHasSavedSetup(true);
-    setActiveTab('remote');
-    setKeyboardDraft('');
-    await repository.connect();
   };
 
   const switchToSystem = async (system: SavedSystem, persistActive = true) => {
@@ -378,10 +380,7 @@ export default function RemoteScreen() {
     setKeyboardDraft('');
 
     if (persistActive) {
-      await Promise.all([
-        SecureStore.deleteItemAsync(DEMO_MODE_KEY),
-        persistSystems(savedSystems, system.id),
-      ]);
+      await persistSystems(savedSystems, system.id);
     }
 
     await connectToSystem(system);
@@ -438,10 +437,7 @@ export default function RemoteScreen() {
     setIsSystemEditorVisible(false);
     setHasSavedSetup(true);
 
-    await Promise.all([
-      SecureStore.deleteItemAsync(DEMO_MODE_KEY),
-      persistSystems(nextSystems, systemId),
-    ]);
+    await persistSystems(nextSystems, systemId);
 
     await switchToSystem(nextSystem, false);
   };
@@ -451,10 +447,7 @@ export default function RemoteScreen() {
     repositoryRef.current?.dispose();
     repositoryRef.current = null;
 
-    await Promise.all([
-      persistSystems([], null),
-      SecureStore.deleteItemAsync(DEMO_MODE_KEY),
-    ]);
+    await persistSystems([], null);
 
     setSavedSystems([]);
     setActiveSystemId(null);
@@ -484,10 +477,7 @@ export default function RemoteScreen() {
     }
 
     setSavedSystems(nextSystems);
-    await Promise.all([
-      SecureStore.deleteItemAsync(DEMO_MODE_KEY),
-      persistSystems(nextSystems, nextActiveSystem.id),
-    ]);
+    await persistSystems(nextSystems, nextActiveSystem.id);
     await switchToSystem(nextActiveSystem, false);
   };
 
@@ -518,14 +508,12 @@ export default function RemoteScreen() {
   const confirmLogout = () => {
     setIsMenuVisible(false);
     Alert.alert(
-      repositoryState.isDemoMode ? 'Exit demo mode?' : 'Remove all saved systems?',
-      repositoryState.isDemoMode
-        ? 'Return to the connection screen and leave the mock device.'
-        : 'This removes every saved LinuxTV system, including usernames and passwords, from this phone.',
+      'Remove all saved systems?',
+      'This removes every saved LinuxTV system, including usernames and passwords, from this phone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: repositoryState.isDemoMode ? 'Exit Demo' : 'Remove All',
+          text: 'Remove All',
           style: 'destructive',
           onPress: () => {
             void clearSavedSetup();
@@ -722,11 +710,29 @@ export default function RemoteScreen() {
     );
   };
 
-  const moveApp = (appId: string, kind: string, direction: 'left' | 'right') => {
-    sendSettingsRequest('reorder_app', { id: appId, kind, direction });
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const reorderApps = (kind: 'native' | 'web', fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    const direction = toIndex < fromIndex ? 'left' : 'right';
+    const kindApps = serverApps.filter((app) => app.kind === kind);
+    const moved = kindApps[fromIndex];
+    if (!moved) return;
+
+    // The desktop swaps one slot per request, so send one request per step.
+    for (let step = 0; step < Math.abs(toIndex - fromIndex); step += 1) {
+      sendSettingsRequest('reorder_app', { id: moved.id, kind, direction });
+    }
+
+    // Optimistic update so the grid reflects the drop immediately.
+    const reordered = [...kindApps];
+    reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    let cursor = 0;
+    setServerApps((current) =>
+      current.map((app) => (app.kind === kind ? reordered[cursor++] ?? app : app))
+    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // The desktop mutates its own config; ask it for the fresh order shortly after.
-    setTimeout(() => fetchApps(), 400);
+    setTimeout(() => fetchApps(), 600);
   };
 
   const adjustVolume = (direction: 'up' | 'down') => {
@@ -765,8 +771,6 @@ export default function RemoteScreen() {
   const commitBrightness = (pct: number) => sendSettingsRequest('set_brightness', { brightness: pct });
 
   const fetchVolumeLevel = async () => {
-    if (repositoryState.isDemoMode) return;
-    
     try {
       console.log('[Remote] Fetching volume level...');
       sendSettingsRequest('get_volume', {});
@@ -776,8 +780,6 @@ export default function RemoteScreen() {
   };
 
   const fetchBrightnessLevel = async () => {
-    if (repositoryState.isDemoMode) return;
-    
     try {
       console.log('[Remote] Fetching brightness level...');
       sendSettingsRequest('get_brightness', {});
@@ -871,11 +873,6 @@ export default function RemoteScreen() {
     
     if (action === 'UPDATE') {
       // Handle update separately with its own confirmation
-      if (repositoryState.isDemoMode) {
-        sendAction('UPDATE');
-        return;
-      }
-
       Alert.alert('Update System', 'Start system update? This will run apt update && apt upgrade and may take several minutes.', [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -888,11 +885,6 @@ export default function RemoteScreen() {
     }
     
     const actionLabel = action === 'SHUTDOWN' ? 'Shutdown' : action === 'REBOOT' ? 'Reboot' : 'Sleep';
-
-    if (repositoryState.isDemoMode) {
-      sendAction(action);
-      return;
-    }
 
     const message =
       action === 'SHUTDOWN'
@@ -983,7 +975,6 @@ export default function RemoteScreen() {
         storedPort,
         storedUsername,
         storedPassword,
-        storedDemoMode,
       ] = await Promise.all([
         SecureStore.getItemAsync(SYSTEMS_KEY),
         SecureStore.getItemAsync(ACTIVE_SYSTEM_ID_KEY),
@@ -991,14 +982,12 @@ export default function RemoteScreen() {
         SecureStore.getItemAsync(PORT_KEY),
         SecureStore.getItemAsync(USERNAME_KEY),
         SecureStore.getItemAsync(PASSWORD_KEY),
-        SecureStore.getItemAsync(DEMO_MODE_KEY),
       ]);
 
       if (!active) {
         return;
       }
 
-      const savedDemoMode = storedDemoMode === 'true';
       let nextSystems = parseStoredSystems(storedSystemsValue);
 
       if (!nextSystems.length && storedHost?.trim()) {
@@ -1016,12 +1005,6 @@ export default function RemoteScreen() {
 
       setSavedSystems(nextSystems);
       setIsHydrated(true);
-
-      if (savedDemoMode) {
-        setHasSavedSetup(true);
-        await activateDemoMode(false);
-        return;
-      }
 
       const nextActiveSystem =
         nextSystems.find((system) => system.id === storedActiveSystemId) ?? nextSystems[0] ?? null;
@@ -1123,7 +1106,7 @@ export default function RemoteScreen() {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
-      if (nextState !== 'active' || !hasSavedSetup || !isHydrated || repositoryState.isDemoMode) {
+      if (nextState !== 'active' || !hasSavedSetup || !isHydrated) {
         return;
       }
 
@@ -1138,11 +1121,11 @@ export default function RemoteScreen() {
     return () => {
       subscription.remove();
     };
-  }, [hasSavedSetup, ipAddress, isHydrated, password, port, repositoryState.isDemoMode, username]);
+  }, [hasSavedSetup, ipAddress, isHydrated, password, port, username]);
 
   // Fetch volume and brightness levels when remote tab is active and connected
   useEffect(() => {
-    if (activeTab !== 'remote' || repositoryState.isDemoMode || !activeSystem?.ipAddress || repositoryState.status !== 'Connected') {
+    if (activeTab !== 'remote' || !activeSystem?.ipAddress || repositoryState.status !== 'Connected') {
       return;
     }
 
@@ -1150,7 +1133,7 @@ export default function RemoteScreen() {
     fetchVolumeLevel();
     fetchBrightnessLevel();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, activeSystem?.id, repositoryState.isDemoMode, repositoryState.status]);
+  }, [activeTab, activeSystem?.id, repositoryState.status]);
 
   // Update local state when repository state changes
   useEffect(() => {
@@ -1209,8 +1192,8 @@ export default function RemoteScreen() {
   // Listen to hardware volume button events from Android native code
   useEffect(() => {
     // Only intercept volume buttons when connected and not on keyboard tab
-    if (repositoryState.status !== 'Connected' || repositoryState.isDemoMode || activeTab === 'keyboard') {
-      console.log('Volume buttons disabled - status:', repositoryState.status, 'demo:', repositoryState.isDemoMode, 'tab:', activeTab);
+    if (repositoryState.status !== 'Connected' || activeTab === 'keyboard') {
+      console.log('Volume buttons disabled - status:', repositoryState.status, 'tab:', activeTab);
       return;
     }
 
@@ -1234,7 +1217,7 @@ export default function RemoteScreen() {
     return () => {
       subscription.remove();
     };
-  }, [repositoryState.status, repositoryState.isDemoMode, activeTab]);
+  }, [repositoryState.status, activeTab]);
 
   const showLoginScreen = !hasSavedSetup;
   const statusAccentColor =
@@ -1287,21 +1270,16 @@ export default function RemoteScreen() {
         style={styles.ambientBackground}
       />
       <View style={styles.container}>
-        {repositoryState.isDemoMode ? (
-          <View style={styles.demoBanner}>
-            <Text style={styles.demoBannerText}>Demo Mode</Text>
-          </View>
-        ) : null}
         {isRecording ? (
-          <View style={[styles.demoBanner, { backgroundColor: '#EF4444' }]}>
+          <View style={[styles.statusBanner, { backgroundColor: '#EF4444' }]}>
             <Ionicons name="mic-circle" size={16} color="#F8FAFC" />
-            <Text style={[styles.demoBannerText, { color: '#F8FAFC' }]}>RECORDING</Text>
+            <Text style={[styles.statusBannerText, { color: '#F8FAFC' }]}>RECORDING</Text>
           </View>
         ) : null}
         {isReplaying ? (
-          <View style={[styles.demoBanner, { backgroundColor: '#2563EB' }]}>
+          <View style={[styles.statusBanner, { backgroundColor: '#2563EB' }]}>
             <Ionicons name="play-circle" size={16} color="#F8FAFC" />
-            <Text style={[styles.demoBannerText, { color: '#F8FAFC' }]}>REPLAYING MACRO</Text>
+            <Text style={[styles.statusBannerText, { color: '#F8FAFC' }]}>REPLAYING MACRO</Text>
           </View>
         ) : null}
 
@@ -1327,9 +1305,7 @@ export default function RemoteScreen() {
               <Text style={styles.title} numberOfLines={1}>LinuxTV</Text>
               <View style={styles.headerMetaRow}>
                 <Text style={styles.deviceName} numberOfLines={1}>
-                  {repositoryState.isDemoMode
-                    ? 'Mock remote session'
-                    : activeSystem?.name || repositoryState.deviceName || 'No system selected'}
+                  {activeSystem?.name || repositoryState.deviceName || 'No system selected'}
                 </Text>
                 {!showLoginScreen ? (
                   <>
@@ -1359,59 +1335,74 @@ export default function RemoteScreen() {
         </GlassSurface>
 
         {showLoginScreen ? (
-          <View style={styles.loginContainer}>
+          <ScrollView
+            style={styles.loginScroll}
+            contentContainerStyle={styles.loginContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
             <View style={styles.loginHeader}>
-              <Ionicons name="tv" size={64} color="#2563EB" />
-              <Text style={styles.helperText}>Add your first LinuxTV system</Text>
+              <View style={styles.loginIconWrap}>
+                <Ionicons name="tv-outline" size={40} color="#F8FAFC" />
+              </View>
+              <Text style={styles.helperText}>Connect to your LinuxTV</Text>
               <Text style={styles.helperSubtext}>
-                Save multiple systems here, then switch between them from the settings gear.
+                Sign in with your username and password, or pair with the code shown on the TV.
               </Text>
             </View>
-            <TextInput
-              value={systemName}
-              onChangeText={setSystemName}
-              placeholder="System name"
-              placeholderTextColor="#9FB3D9"
-              autoCapitalize="words"
-              autoCorrect={false}
-              style={styles.input}
-            />
-            <View style={styles.addressRow}>
-              <TextInput
-                value={ipAddress}
-                onChangeText={setIpAddress}
-                placeholder="IP address"
-                placeholderTextColor="#9FB3D9"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="numbers-and-punctuation"
-                style={[styles.input, styles.ipInput]}
-              />
-              <TextInput
-                value={port}
-                onChangeText={setPort}
-                placeholder="Port"
-                placeholderTextColor="#9FB3D9"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="number-pad"
-                style={[styles.input, styles.portInput]}
-              />
-            </View>
-            {renderCredentialInputs()}
+            <GlassSurface style={styles.loginCard} tint="rgba(20, 33, 61, 0.72)">
+              <Text style={styles.loginSectionLabel}>DEVICE</Text>
+              <View style={styles.inputWrap}>
+                <Ionicons name="desktop-outline" size={18} color="#9FB3D9" />
+                <TextInput
+                  value={systemName}
+                  onChangeText={setSystemName}
+                  placeholder="System name (optional)"
+                  placeholderTextColor="#5B6F99"
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  style={styles.inputField}
+                />
+              </View>
+              <View style={styles.addressRow}>
+                <View style={[styles.inputWrap, styles.ipInput]}>
+                  <Ionicons name="wifi-outline" size={18} color="#9FB3D9" />
+                  <TextInput
+                    value={ipAddress}
+                    onChangeText={setIpAddress}
+                    placeholder="IP address"
+                    placeholderTextColor="#5B6F99"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="numbers-and-punctuation"
+                    style={styles.inputField}
+                  />
+                </View>
+                <View style={[styles.inputWrap, styles.portInput]}>
+                  <TextInput
+                    value={port}
+                    onChangeText={setPort}
+                    placeholder="Port"
+                    placeholderTextColor="#5B6F99"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="number-pad"
+                    style={styles.inputField}
+                  />
+                </View>
+              </View>
+              <Text style={[styles.loginSectionLabel, styles.loginSectionSpaced]}>SIGN IN</Text>
+              {renderCredentialInputs()}
+            </GlassSurface>
             <Pressable
-              style={[styles.actionButton, styles.primaryButton]}
+              style={({ pressed }) => [
+                styles.actionButton,
+                styles.primaryButton,
+                pressed && styles.pressed,
+              ]}
               onPress={saveSystemAndConnect}>
-              <Text style={styles.primaryButtonText}>Save & Connect</Text>
+              <Text style={styles.primaryButtonText}>Connect</Text>
             </Pressable>
-            <Pressable
-              style={[styles.actionButton, styles.secondaryButton]}
-              onPress={() => {
-                void activateDemoMode();
-              }}>
-              <Text style={styles.secondaryButtonText}>Skip Connection</Text>
-            </Pressable>
-          </View>
+          </ScrollView>
         ) : (
           <View style={styles.remoteContainer}>
             {activeTab === 'remote' && (
@@ -1699,6 +1690,7 @@ export default function RemoteScreen() {
               <ScrollView
                 style={styles.remoteScroll}
                 contentContainerStyle={styles.remoteScrollContent}
+                scrollEnabled={!isDraggingApp}
                 showsVerticalScrollIndicator={false}>
                 <View style={styles.appsContainer}>
                   <View style={styles.appsHeader}>
@@ -1791,19 +1783,14 @@ export default function RemoteScreen() {
                           <Ionicons name="desktop" size={18} color="#2563EB" />
                           <Text style={styles.sectionTitle}>Apps</Text>
                         </View>
-                        {serverApps
-                          .filter(app => app.kind === 'native')
-                          .map((app, index, list) => (
-                            <AppTile
-                              key={app.id}
-                              app={app}
-                              fallbackIcon="desktop"
-                              onLaunch={() => launchApp(app.id)}
-                              onRemove={() => removeApp(app.id, app.name)}
-                              onMoveLeft={index > 0 ? () => moveApp(app.id, 'native', 'left') : undefined}
-                              onMoveRight={index < list.length - 1 ? () => moveApp(app.id, 'native', 'right') : undefined}
-                            />
-                          ))}
+                        <AppSection
+                          apps={serverApps.filter(app => app.kind === 'native')}
+                          fallbackIcon="desktop"
+                          onLaunch={launchApp}
+                          onRemove={removeApp}
+                          onReorder={(from, to) => reorderApps('native', from, to)}
+                          onDragChange={setIsDraggingApp}
+                        />
                       </>
                     )}
 
@@ -1814,19 +1801,14 @@ export default function RemoteScreen() {
                           <Ionicons name="globe" size={18} color="#2563EB" />
                           <Text style={styles.sectionTitle}>Streaming</Text>
                         </View>
-                        {serverApps
-                          .filter(app => app.kind === 'web')
-                          .map((app, index, list) => (
-                            <AppTile
-                              key={app.id}
-                              app={app}
-                              fallbackIcon="globe"
-                              onLaunch={() => launchApp(app.id)}
-                              onRemove={() => removeApp(app.id, app.name)}
-                              onMoveLeft={index > 0 ? () => moveApp(app.id, 'web', 'left') : undefined}
-                              onMoveRight={index < list.length - 1 ? () => moveApp(app.id, 'web', 'right') : undefined}
-                            />
-                          ))}
+                        <AppSection
+                          apps={serverApps.filter(app => app.kind === 'web')}
+                          fallbackIcon="globe"
+                          onLaunch={launchApp}
+                          onRemove={removeApp}
+                          onReorder={(from, to) => reorderApps('web', from, to)}
+                          onDragChange={setIsDraggingApp}
+                        />
                       </>
                     )}
                   </View>
@@ -2233,7 +2215,6 @@ export default function RemoteScreen() {
             
             <View style={styles.menuDivider} />
             
-            {!repositoryState.isDemoMode ? (
               <>
                 {/* Systems Section */}
                 <View style={styles.menuSection}>
@@ -2307,7 +2288,6 @@ export default function RemoteScreen() {
                 
                 <View style={styles.menuDivider} />
               </>
-            ) : null}
 
             {/* Device Settings */}
             <Pressable
@@ -2397,7 +2377,7 @@ export default function RemoteScreen() {
               <View style={styles.menuItemContent}>
                 <Ionicons name="log-out" size={20} color="#EF4444" />
                 <Text style={styles.menuItemDangerText}>
-                  {repositoryState.isDemoMode ? 'Exit Demo' : 'Logout & Clear Systems'}
+                  {'Logout & Clear Systems'}
                 </Text>
               </View>
             </Pressable>
@@ -2921,49 +2901,164 @@ function VerticalSlider({
   );
 }
 
-function AppTile({
-  app,
+type TileLayout = { x: number; y: number; width: number; height: number };
+
+function AppSection({
+  apps,
   fallbackIcon,
   onLaunch,
   onRemove,
-  onMoveLeft,
-  onMoveRight,
+  onReorder,
+  onDragChange,
+}: {
+  apps: { id: string; name: string; icon?: string }[];
+  fallbackIcon: ComponentProps<typeof Ionicons>['name'];
+  onLaunch: (id: string) => void;
+  onRemove: (id: string, name: string) => void;
+  onReorder: (from: number, to: number) => void;
+  onDragChange: (dragging: boolean) => void;
+}) {
+  const layoutsRef = useRef<Record<number, TileLayout>>({});
+
+  return (
+    <>
+      {apps.map((app, index) => (
+        <AppTile
+          key={app.id}
+          app={app}
+          index={index}
+          layoutsRef={layoutsRef}
+          fallbackIcon={fallbackIcon}
+          onLaunch={() => onLaunch(app.id)}
+          onRemove={() => onRemove(app.id, app.name)}
+          onReorder={onReorder}
+          onDragChange={onDragChange}
+        />
+      ))}
+    </>
+  );
+}
+
+const LONG_PRESS_MS = 350;
+const MOVE_CANCEL_PX = 8;
+
+function AppTile({
+  app,
+  index,
+  layoutsRef,
+  fallbackIcon,
+  onLaunch,
+  onRemove,
+  onReorder,
+  onDragChange,
 }: {
   app: { id: string; name: string; icon?: string };
+  index: number;
+  layoutsRef: { current: Record<number, TileLayout> };
   fallbackIcon: ComponentProps<typeof Ionicons>['name'];
   onLaunch: () => void;
   onRemove: () => void;
-  onMoveLeft?: () => void;
-  onMoveRight?: () => void;
+  onReorder: (from: number, to: number) => void;
+  onDragChange: (dragging: boolean) => void;
 }) {
+  const [dragging, setDragging] = useState(false);
+  const translate = useRef(new Animated.ValueXY()).current;
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeRef = useRef(false);
+  // PanResponder is created once, so read the latest props through a ref.
+  const latest = useRef({ index, onLaunch, onReorder, onDragChange });
+  latest.current = { index, onLaunch, onReorder, onDragChange };
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const finishDrag = () => {
+    activeRef.current = false;
+    setDragging(false);
+    latest.current.onDragChange(false);
+    Animated.spring(translate, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
+  };
+
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => !activeRef.current,
+      onPanResponderGrant: () => {
+        clearTimer();
+        translate.setValue({ x: 0, y: 0 });
+        timerRef.current = setTimeout(() => {
+          timerRef.current = null;
+          activeRef.current = true;
+          setDragging(true);
+          latest.current.onDragChange(true);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        }, LONG_PRESS_MS);
+      },
+      onPanResponderMove: (_event, gesture) => {
+        if (!activeRef.current) {
+          if (Math.abs(gesture.dx) > MOVE_CANCEL_PX || Math.abs(gesture.dy) > MOVE_CANCEL_PX) {
+            clearTimer();
+          }
+          return;
+        }
+        translate.setValue({ x: gesture.dx, y: gesture.dy });
+      },
+      onPanResponderRelease: (_event, gesture) => {
+        const wasPending = timerRef.current !== null;
+        clearTimer();
+
+        if (activeRef.current) {
+          const layouts = layoutsRef.current;
+          const own = layouts[latest.current.index];
+          if (own) {
+            const cx = own.x + own.width / 2 + gesture.dx;
+            const cy = own.y + own.height / 2 + gesture.dy;
+            let best = latest.current.index;
+            let bestDistance = Infinity;
+            Object.entries(layouts).forEach(([key, box]) => {
+              const distance =
+                (box.x + box.width / 2 - cx) ** 2 + (box.y + box.height / 2 - cy) ** 2;
+              if (distance < bestDistance) {
+                bestDistance = distance;
+                best = Number(key);
+              }
+            });
+            if (best !== latest.current.index) {
+              latest.current.onReorder(latest.current.index, best);
+            }
+          }
+          finishDrag();
+          return;
+        }
+
+        if (wasPending && Math.abs(gesture.dx) < MOVE_CANCEL_PX && Math.abs(gesture.dy) < MOVE_CANCEL_PX) {
+          latest.current.onLaunch();
+        }
+      },
+      onPanResponderTerminate: () => {
+        clearTimer();
+        if (activeRef.current) finishDrag();
+      },
+    })
+  ).current;
+
+  useEffect(() => clearTimer, []);
+
   return (
-    <Pressable
-      style={({ pressed }) => [styles.appTile, pressed && styles.appTilePressed]}
-      onPress={onLaunch}>
-      <View style={styles.tileMoveCluster}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.tileMoveButton,
-            !onMoveLeft && styles.tileMoveButtonDisabled,
-            pressed && onMoveLeft && styles.pressed,
-          ]}
-          onPress={onMoveLeft}
-          disabled={!onMoveLeft}
-          hitSlop={8}>
-          <Ionicons name="chevron-back" size={12} color={onMoveLeft ? '#9FB3D9' : 'rgba(159, 179, 217, 0.25)'} />
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [
-            styles.tileMoveButton,
-            !onMoveRight && styles.tileMoveButtonDisabled,
-            pressed && onMoveRight && styles.pressed,
-          ]}
-          onPress={onMoveRight}
-          disabled={!onMoveRight}
-          hitSlop={8}>
-          <Ionicons name="chevron-forward" size={12} color={onMoveRight ? '#9FB3D9' : 'rgba(159, 179, 217, 0.25)'} />
-        </Pressable>
-      </View>
+    <Animated.View
+      onLayout={(event) => {
+        layoutsRef.current[index] = event.nativeEvent.layout;
+      }}
+      style={[
+        styles.appTile,
+        dragging && styles.appTileDragging,
+        { transform: [...translate.getTranslateTransform(), { scale: dragging ? 1.06 : 1 }] },
+      ]}
+      {...responder.panHandlers}>
       <Pressable
         style={({ pressed }) => [styles.tileDeleteButton, pressed && styles.pressed]}
         onPress={onRemove}
@@ -2980,7 +3075,7 @@ function AppTile({
       <Text style={styles.tileName} numberOfLines={1} ellipsizeMode="tail">
         {app.name}
       </Text>
-    </Pressable>
+    </Animated.View>
   );
 }
 
@@ -3016,7 +3111,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(224, 236, 255, 0.08)',
   },
   // ... existing styles
-  demoBanner: {
+  statusBanner: {
     alignSelf: 'flex-start',
     backgroundColor: '#F59E0B',
     borderRadius: 999,
@@ -3027,7 +3122,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  demoBannerText: {
+  statusBannerText: {
     color: '#0A1128',
     fontSize: 12,
     fontWeight: '800',
@@ -3143,15 +3238,95 @@ const styles = StyleSheet.create({
     color: '#9FB3D9',
     fontSize: 18,
   },
-  loginContainer: {
+  loginScroll: {
     flex: 1,
+  },
+  loginContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
-    gap: 14,
+    gap: 16,
+    paddingVertical: 16,
   },
   loginHeader: {
     alignItems: 'center',
+    gap: 10,
+    marginBottom: 4,
+  },
+  loginIconWrap: {
+    width: 76,
+    height: 76,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563EB',
+    marginBottom: 6,
+  },
+  loginCard: {
+    padding: 16,
     gap: 12,
-    marginBottom: 8,
+    borderRadius: 20,
+  },
+  loginSectionLabel: {
+    color: '#9FB3D9',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+  },
+  loginSectionSpaced: {
+    marginTop: 6,
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(147, 197, 253, 0.18)',
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
+    paddingHorizontal: 14,
+  },
+  inputField: {
+    flex: 1,
+    color: '#F8FAFC',
+    paddingVertical: 13,
+    fontSize: 15,
+  },
+  codeInput: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 8,
+  },
+  authToggle: {
+    flexDirection: 'row',
+    padding: 4,
+    gap: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(10, 17, 40, 0.6)',
+  },
+  authToggleOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 9,
+  },
+  authToggleOptionActive: {
+    backgroundColor: '#2563EB',
+  },
+  authToggleText: {
+    color: '#9FB3D9',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  authToggleTextActive: {
+    color: '#F8FAFC',
+  },
+  authHint: {
+    color: '#9FB3D9',
+    fontSize: 12,
+    lineHeight: 17,
   },
   helperText: {
     color: '#F8FAFC',
@@ -3160,11 +3335,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   helperSubtext: {
-    color: '#2563EB',
-    fontSize: 13,
-    lineHeight: 18,
+    color: '#9FB3D9',
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
-    marginTop: -4,
+    paddingHorizontal: 12,
   },
   remoteContainer: {
     flex: 1,
@@ -3266,26 +3441,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 10,
   },
-  tileMoveCluster: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    flexDirection: 'row',
-    gap: 4,
-    zIndex: 10,
-  },
-  tileMoveButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(10, 17, 40, 0.7)',
-    borderWidth: 1,
-    borderColor: 'rgba(224, 236, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileMoveButtonDisabled: {
-    opacity: 0.4,
+  appTileDragging: {
+    zIndex: 50,
+    elevation: 12,
+    borderColor: '#2563EB',
+    backgroundColor: 'rgba(37, 99, 235, 0.25)',
   },
   tileIconWrap: {
     width: 64,

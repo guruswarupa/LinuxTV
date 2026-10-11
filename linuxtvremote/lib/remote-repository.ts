@@ -16,16 +16,9 @@ export type ConnectionConfig = {
   username: string;
 };
 
-export type DemoApp = {
-  id: string;
-  name: string;
-  subtitle: string;
-};
-
 export type RepositoryState = {
   authStatus: AuthState;
   deviceName: string;
-  isDemoMode: boolean;
   lastAction: string;
   lastMessage: string;
   status: ConnectionState;
@@ -70,7 +63,6 @@ export interface RemoteRepository {
   connect(config?: Partial<ConnectionConfig>): Promise<void>;
   disconnect(): void;
   dispose(): void;
-  getDemoApps(): DemoApp[];
   sendAction(action: string): void;
   sendPointerEvent(event: PointerEventType, payload?: { dx?: number; dy?: number }): void;
   sendSpecialKey(key: SpecialKey, modifiers?: KeyModifier[]): void;
@@ -88,129 +80,6 @@ type RepositoryListener = (update: Partial<RepositoryState>) => void;
 
 const DEFAULT_PORT = '8765';
 const RECONNECT_DELAY_MS = 3000;
-
-const DEMO_APPS: DemoApp[] = [
-  { id: 'demo-youtube', name: 'YouTube', subtitle: 'Streaming' },
-  { id: 'demo-netflix', name: 'Netflix', subtitle: 'Movies & TV' },
-  { id: 'demo-kodi', name: 'Kodi', subtitle: 'Media Center' },
-  { id: 'demo-browser', name: 'Browser', subtitle: 'Web Apps' },
-];
-
-export class DemoRepository implements RemoteRepository {
-  constructor(private readonly emit: RepositoryListener) {}
-
-  async connect(): Promise<void> {
-    this.emit({
-      authStatus: 'Authenticated',
-      deviceName: 'Demo LinuxTV Device',
-      isDemoMode: true,
-      lastMessage: 'Demo mode is ready. Explore the remote without a server.',
-      status: 'Connected',
-    });
-  }
-
-  disconnect() {
-    this.emit({
-      authStatus: 'No saved credentials',
-      deviceName: '',
-      isDemoMode: false,
-      lastAction: 'None',
-      lastMessage: 'Demo mode closed.',
-      status: 'Disconnected',
-    });
-  }
-
-  dispose() {
-    this.disconnect();
-  }
-
-  getDemoApps() {
-    return DEMO_APPS;
-  }
-
-  sendAction(action: string) {
-    const label = action.replaceAll('_', ' ');
-    this.emit({
-      lastAction: label,
-      lastMessage: `Demo action: ${label}`,
-    });
-  }
-
-  sendPointerEvent(event: PointerEventType, payload?: { dx?: number; dy?: number }) {
-    if (event === 'move') {
-      this.emit({
-        lastMessage: `Demo pointer moved ${payload?.dx ?? 0}, ${payload?.dy ?? 0}`,
-      });
-      return;
-    }
-
-    const label =
-      event === 'tap'
-        ? 'Touchpad tap'
-        : event === 'click'
-          ? 'Left click'
-          : 'Right click';
-    this.emit({
-      lastAction: label,
-      lastMessage: `Demo action: ${label}`,
-    });
-  }
-
-  sendSpecialKey(key: SpecialKey, modifiers?: KeyModifier[]) {
-    const label = modifiers?.length ? `${modifiers.join('+')}+${key}` : key;
-    this.emit({
-      lastAction: `Key ${label}`,
-      lastMessage: `Demo key: ${label}`,
-    });
-  }
-
-  sendText(text: string) {
-    this.emit({
-      lastAction: 'Typed text',
-      lastMessage: `Demo text sent: ${text}`,
-    });
-  }
-
-  sendSettingsRequest(type: string, payload?: Record<string, any>) {
-    this.emit({
-      lastAction: 'Settings Request',
-      lastMessage: `Demo settings request: ${type}`,
-    });
-  }
-
-  addApp(app: { type: string; name: string; command?: string; url?: string }) {
-    this.emit({
-      lastAction: 'Add App',
-      lastMessage: `Demo: Added app "${app.name}"`,
-    });
-  }
-
-  removeApp(appId: string) {
-    this.emit({
-      lastAction: 'Remove App',
-      lastMessage: `Demo: Removed app ${appId}`,
-    });
-  }
-
-  startRecording(): void {
-    this.emit({ lastMessage: 'Demo: Started recording' });
-  }
-
-  stopRecording(): { payload: Record<string, any>; delayMs: number }[] {
-    this.emit({ lastMessage: 'Demo: Stopped recording' });
-    return [];
-  }
-
-  async replayMacro(
-    _actions: { payload: Record<string, any>; delayMs: number }[]
-  ): Promise<void> {
-    this.emit({ lastMessage: 'Demo: Replaying macro' });
-  }
-
-  isRecording(): boolean {
-    return false;
-  }
-}
 
 export class RealServerRepository implements RemoteRepository {
   private socket: WebSocket | null = null;
@@ -296,7 +165,6 @@ export class RealServerRepository implements RemoteRepository {
           ? 'Saved credentials loaded'
           : 'No saved credentials',
       deviceName: `LinuxTV @ ${target}`,
-      isDemoMode: false,
       lastMessage: `Trying ${target}`,
       status: 'Connecting...',
     });
@@ -351,7 +219,6 @@ export class RealServerRepository implements RemoteRepository {
     this.emit({
       authStatus: 'No saved credentials',
       deviceName: '',
-      isDemoMode: false,
       lastAction: 'None',
       lastMessage: 'Disconnected from LinuxTV.',
       status: 'Disconnected',
@@ -360,10 +227,6 @@ export class RealServerRepository implements RemoteRepository {
 
   dispose() {
     this.disconnect();
-  }
-
-  getDemoApps() {
-    return [];
   }
 
   sendAction(action: string) {
