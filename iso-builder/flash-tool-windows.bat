@@ -1,6 +1,11 @@
 @echo off
 echo Starting LinuxTV Flash Tool...
-python "%~dp0linuxtv-flash-tool.py"
+where py >nul 2>&1
+if %errorlevel%==0 (
+    py -3 "%~dp0linuxtv-flash-tool.py"
+) else (
+    python "%~dp0linuxtv-flash-tool.py"
+)
 if errorlevel 1 (
     echo.
     echo Error: Python is required.

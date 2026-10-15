@@ -43,9 +43,10 @@ no need to remember to bump it by hand before clicking "Run workflow".
 ## `build-publish-flash-tools.yml`
 
 `iso-builder/linuxtv-flash-tool.py`, `flash-tool-windows.bat`,
-`flash-tool-linux.sh`, `flash-tool-macos.sh`, and `USB-GUIDE.md` are plain
-scripts, not something that gets compiled — this workflow just packages
-whatever's currently committed and publishes it to SourceForge and/or the
+`run-as-admin.bat`, `flash-tool-linux.sh`, `flash-tool-macos.sh`, and
+`USB-GUIDE.md` are plain scripts, not something that gets compiled — this
+workflow zips them into one `LinuxTV-Flash-Tool.zip` (plus a
+`flash-tools.sha256` for the zip) and publishes that to SourceForge and/or the
 GitHub release, same as the other two.
 
 ## GitHub Releases: the "latest" release

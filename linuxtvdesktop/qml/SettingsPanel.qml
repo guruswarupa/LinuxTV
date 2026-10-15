@@ -9,6 +9,7 @@ Item {
         { key: "brightness", label: "Brightness" },
         { key: "remote", label: "Remote Control" },
         { key: "autoopen", label: "Auto-Open" },
+        { key: "store", label: "App Store" },
         { key: "systemupdate", label: "System Update" },
         { key: "appupdate", label: "App Update" },
         { key: "restart", label: "Restart" },

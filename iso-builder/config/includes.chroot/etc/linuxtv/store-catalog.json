@@ -1,0 +1,14 @@
+{
+  "apps": [
+    {"id": "kodi", "name": "Kodi", "description": "Media center for movies, TV and music", "packages": ["kodi"], "cmd": "kodi"},
+    {"id": "vlc", "name": "VLC", "description": "Plays almost any video or audio file", "packages": ["vlc"], "cmd": "vlc"},
+    {"id": "mpv", "name": "mpv", "description": "Lightweight, high quality video player", "packages": ["mpv"], "cmd": "mpv --player-operation-mode=pseudo-gui"},
+    {"id": "celluloid", "name": "Celluloid", "description": "Simple video player built on mpv", "packages": ["celluloid"], "cmd": "celluloid"},
+    {"id": "smplayer", "name": "SMPlayer", "description": "Video player with subtitle download and resume", "packages": ["smplayer"], "cmd": "smplayer"},
+    {"id": "rhythmbox", "name": "Rhythmbox", "description": "Music player and library", "packages": ["rhythmbox"], "cmd": "rhythmbox"},
+    {"id": "strawberry", "name": "Strawberry", "description": "Music player for large local collections", "packages": ["strawberry"], "cmd": "strawberry"},
+    {"id": "audacious", "name": "Audacious", "description": "Small, fast audio player", "packages": ["audacious"], "cmd": "audacious"},
+    {"id": "handbrake", "name": "HandBrake", "description": "Convert video between formats", "packages": ["handbrake"], "cmd": "ghb"},
+    {"id": "kdenlive", "name": "Kdenlive", "description": "Video editor", "packages": ["kdenlive"], "cmd": "kdenlive"}
+  ]
+}

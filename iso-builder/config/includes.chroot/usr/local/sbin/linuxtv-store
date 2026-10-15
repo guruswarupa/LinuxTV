@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Root helper for the LinuxTV app store.
+
+Installs ONLY packages listed in the root-owned catalog
+(/etc/linuxtv/store-catalog.json). The caller supplies a catalog id; package
+names are never taken from the command line. Invoked via a scoped sudoers
+rule (/etc/sudoers.d/linuxtv-update), so the linuxtv account can stay locked.
+
+Usage: linuxtv-store install <catalog-id>
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+
+CATALOG = "/etc/linuxtv/store-catalog.json"
+ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+PKG_RE = re.compile(r"^[a-z0-9][a-z0-9+.-]{1,100}$")
+
+
+def fail(msg, code=2):
+    print(msg, file=sys.stderr)
+    sys.exit(code)
+
+
+def main(argv):
+    if os.geteuid() != 0:
+        fail("must run as root")
+    if len(argv) != 3 or argv[1] != "install":
+        fail("usage: linuxtv-store install <catalog-id>")
+    app_id = argv[2]
+    if not ID_RE.match(app_id):
+        fail("invalid id")
+
+    st = os.stat(CATALOG)
+    if st.st_uid != 0 or st.st_mode & 0o022:
+        fail("catalog must be root-owned and not group/world writable")
+    with open(CATALOG, encoding="utf-8") as fh:
+        catalog = json.load(fh)
+
+    entry = next((e for e in catalog.get("apps", []) if e.get("id") == app_id), None)
+    if entry is None:
+        fail(f"'{app_id}' is not in the catalog")
+    packages = entry.get("packages", [])
+    if not packages or not all(isinstance(p, str) and PKG_RE.match(p) for p in packages):
+        fail("catalog entry has invalid packages")
+
+    env = {"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "DEBIAN_FRONTEND": "noninteractive", "LC_ALL": "C"}
+    rc = subprocess.call(["/usr/bin/apt-get", "update"], env=env)
+    if rc != 0:
+        fail("apt-get update failed", rc)
+    rc = subprocess.call(["/usr/bin/apt-get", "install", "-y", "--no-install-recommends", "--"] + packages, env=env)
+    sys.exit(rc)
+
+
+if __name__ == "__main__":
+    main(sys.argv)

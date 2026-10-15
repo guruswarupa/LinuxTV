@@ -66,6 +66,7 @@ from system_controls import (
     split_command,
     sync_system_time,
 )
+import store
 from theme import THEME
 
 try:
@@ -512,6 +513,7 @@ class LauncherWindow(QMainWindow):
     # thread, so these are how the scan results cross back over safely.
     wifiScanFinished = Signal(object, str, str)
     bluetoothScanFinished = Signal(object, str, str)
+    storeInstallFinished = Signal(str, bool, str)
 
     def __init__(self, config_path: Path):
         super().__init__()
@@ -526,6 +528,7 @@ class LauncherWindow(QMainWindow):
         self._panel_context = {}
         self.wifiScanFinished.connect(self._on_wifi_scan_finished)
         self.bluetoothScanFinished.connect(self._on_bluetooth_scan_finished)
+        self.storeInstallFinished.connect(self._on_store_install_finished)
         self.tiles = []
         self.tile_rows = []
         self.current_index = 0
@@ -1334,6 +1337,12 @@ class LauncherWindow(QMainWindow):
                 "status": "",
             })
 
+        elif name == "store":
+            if not store.helper_available():
+                self.home_backend.set_panel(name, {"apps": [], "status": "App store is not available on this system."})
+            else:
+                self.home_backend.set_panel(name, {"apps": store.list_store_apps(), "status": ""})
+
         elif name == "autoOpen":
             auto_launch = self.config.get("auto_launch", {})
             self.home_backend.set_panel(name, {
@@ -1393,6 +1402,8 @@ class LauncherWindow(QMainWindow):
             self._brightness_set_action(payload)
         elif panel == "remoteLogin" and action == "save":
             self._remote_login_save_action(payload)
+        elif panel == "store" and action == "install":
+            self._store_install_action(payload)
         elif panel == "autoOpen" and action == "save":
             self._auto_open_save_action(payload)
 
@@ -1598,6 +1609,31 @@ class LauncherWindow(QMainWindow):
             return
         self.close_app_panel()
 
+    def _store_install_action(self, payload):
+        app_id = str(payload.get("id", "")).strip()
+        if self.home_backend.panelBusy or not app_id:
+            return
+        self.home_backend.set_panel_busy(True)
+        self._panel_status("Installing... this can take a few minutes.")
+
+        def worker():
+            success, message = store.install_app(app_id)
+            self.storeInstallFinished.emit(app_id, success, message)
+
+        threading.Thread(target=worker, name="store-install", daemon=True).start()
+
+    def _on_store_install_finished(self, app_id, success, message):
+        entry = next((a for a in store.load_catalog() if a["id"] == app_id), None)
+        if success and entry and entry.get("cmd"):
+            existing = [a.get("cmd") for a in self.config.get("native_apps", [])]
+            if entry["cmd"] not in existing:
+                self.add_native_app(entry.get("name", app_id), entry["cmd"], notify=False)
+        if self.home_backend.activePanel != "store":
+            return
+        self.home_backend.set_panel_busy(False)
+        status = f"{entry['name']} installed." if success and entry else message
+        self._panel_status(status, apps=store.list_store_apps())
+
     def _auto_open_save_action(self, payload):
         kind = payload.get("kind", "")
         target = payload.get("target", "")
@@ -1713,6 +1749,9 @@ class LauncherWindow(QMainWindow):
 
     def open_remote_settings(self):
         self.open_app_panel("remoteLogin", {})
+
+    def open_store(self):
+        self.open_app_panel("store", {})
 
     def open_settings(self):
         self.open_app_panel("autoOpen", {})
@@ -3718,6 +3757,7 @@ class LauncherWindow(QMainWindow):
             "brightness": self.open_brightness_settings,
             "remote": self.open_remote_settings,
             "autoopen": self.open_settings,
+            "store": self.open_store,
             "systemupdate": self.update_system,
             "appupdate": self.update_app,
             "restart": self.restart_system,

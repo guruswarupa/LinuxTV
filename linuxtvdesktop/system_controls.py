@@ -542,7 +542,7 @@ def request_system_power_action(action: str):
 
 
 def request_system_update():
-    """Trigger system update using apt, auto-password only for linuxtv user"""
+    """Trigger system update using apt (passwordless sudo for linuxtv via sudoers rule)"""
     # Check if apt is available
     apt = shutil.which("apt")
     if not apt:
@@ -558,15 +558,10 @@ def request_system_update():
                 terminal = term
                 break
         
-        # Check current username - only auto-password for linuxtv user
-        current_user = os.environ.get("USER") or os.environ.get("LOGNAME") or ""
-        
-        if current_user == "linuxtv":
-            # Auto-fill password for linuxtv user
-            update_command = "echo 'linuxtv' | sudo -S apt update && echo 'linuxtv' | sudo -S apt upgrade -y"
-        else:
-            # Let user enter password manually
-            update_command = "sudo apt update && sudo apt upgrade -y"
+        # linuxtv has a scoped NOPASSWD sudoers rule for these two commands
+        # (/etc/sudoers.d/linuxtv-update); every other user is prompted normally.
+        # No password is stored anywhere in the app.
+        update_command = "sudo apt update && sudo apt upgrade -y"
         
         if terminal:
             # Run in terminal so user can see progress

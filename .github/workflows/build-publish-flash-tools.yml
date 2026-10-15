@@ -1,8 +1,8 @@
 name: Publish Flash Tools
 
 # Manual only, same as the other two. These files are plain scripts (no
-# actual build/compile step), so this just packages and publishes whatever
-# is currently committed under iso-builder/.
+# actual build/compile step), so this just zips whatever is currently
+# committed under iso-builder/ and publishes that one file.
 on:
   workflow_dispatch:
     inputs:
@@ -36,21 +36,28 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      # One sums file for the whole tool bundle: sha256sum -c flash-tools.sha256
-      - name: Generate checksums
+      # Everything needed to flash, in one zip: the tool, the per-OS launchers,
+      # and the guide. (Windows no longer needs dd.exe -- the tool writes the
+      # drive directly.) Scripts keep their executable bit inside the zip.
+      - name: Build the flash tool zip
         working-directory: iso-builder
-        run: sha256sum linuxtv-flash-tool.py flash-tool-windows.bat flash-tool-linux.sh flash-tool-macos.sh USB-GUIDE.md | tee flash-tools.sha256
+        run: |
+          rm -rf bundle && mkdir -p bundle/LinuxTV-Flash-Tool
+          cp linuxtv-flash-tool.py flash-tool-windows.bat run-as-admin.bat \
+             flash-tool-linux.sh flash-tool-macos.sh USB-GUIDE.md bundle/LinuxTV-Flash-Tool/
+          cp -r assets bundle/LinuxTV-Flash-Tool/assets   # window icon + logo
+          chmod +x bundle/LinuxTV-Flash-Tool/*.sh bundle/LinuxTV-Flash-Tool/linuxtv-flash-tool.py
+          (cd bundle && zip -r ../LinuxTV-Flash-Tool.zip LinuxTV-Flash-Tool)
+          unzip -l LinuxTV-Flash-Tool.zip
+          # Checksum for the download: sha256sum -c flash-tools.sha256
+          sha256sum LinuxTV-Flash-Tool.zip | tee flash-tools.sha256
 
       - name: Upload as a workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: linuxtv-flash-tools
           path: |
-            iso-builder/linuxtv-flash-tool.py
-            iso-builder/flash-tool-windows.bat
-            iso-builder/flash-tool-linux.sh
-            iso-builder/flash-tool-macos.sh
-            iso-builder/USB-GUIDE.md
+            iso-builder/LinuxTV-Flash-Tool.zip
             iso-builder/flash-tools.sha256
           retention-days: 30
 
@@ -67,11 +74,7 @@ jobs:
           chmod 600 ~/.ssh/sourceforge_key
           ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts 2>/dev/null
           rsync -avP -e "ssh -i ~/.ssh/sourceforge_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
-            iso-builder/linuxtv-flash-tool.py \
-            iso-builder/flash-tool-windows.bat \
-            iso-builder/flash-tool-linux.sh \
-            iso-builder/flash-tool-macos.sh \
-            iso-builder/USB-GUIDE.md \
+            iso-builder/LinuxTV-Flash-Tool.zip \
             iso-builder/flash-tools.sha256 \
             "${SOURCEFORGE_USER}@frs.sourceforge.net:/home/frs/project/${SOURCEFORGE_PROJECT}/release/"
 
@@ -85,9 +88,5 @@ jobs:
             gh release create latest --repo "${{ github.repository }}" \
               --title "Latest build" --notes "Automatically updated by CI. Not a tagged version release."
           gh release upload latest --repo "${{ github.repository }}" --clobber \
-            iso-builder/linuxtv-flash-tool.py \
-            iso-builder/flash-tool-windows.bat \
-            iso-builder/flash-tool-linux.sh \
-            iso-builder/flash-tool-macos.sh \
-            iso-builder/USB-GUIDE.md \
+            iso-builder/LinuxTV-Flash-Tool.zip \
             iso-builder/flash-tools.sha256

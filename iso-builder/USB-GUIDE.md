@@ -6,7 +6,7 @@
 
 **This is the official flashing tool - works on Windows, macOS, and Linux!**
 
-1. **Navigate to the iso-builder folder**
+1. **Download `LinuxTV-Flash-Tool.zip` from the release page and extract it** (right-click > Extract All on Windows). Run the launcher from the extracted folder, not from inside the zip. Windows also needs [Python 3](https://www.python.org/downloads/) installed (tick "Add python.exe to PATH"). No `dd` or other extra tools are needed.
 
 2. **Run the flash tool:**
    
@@ -27,15 +27,14 @@
 
 3. **Use the GUI:**
    * Click "Browse..." and select the LinuxTV ISO file
-   * Select your USB drive from the dropdown
-   * Check "Enable persistence" if you want to save files and settings
+   * Select your USB drive from the list
    * Click "Flash LinuxTV to USB"
    * Wait for the process to complete (5-15 minutes)
 
 4. **Done!** The tool will:
    * Write the ISO to your USB drive
-   * Create a persistence partition (if enabled)
-   * The persistence partition will be automatically formatted as ext4 on first boot
+   * Set up space on the stick to save your files and settings (persistence)
+   * Finish setting that space up the first time you boot (see below)
 
 **Requirements:**
 * Python 3 installed (download from https://www.python.org/downloads/)
@@ -51,6 +50,28 @@ The flash tool creates a persistence partition on your USB drive. On first boot,
 * Enable persistence for saving your files and settings
 
 No manual setup required!
+
+**Expect one automatic restart the first time you boot.** While setting up persistence, LinuxTV restarts itself once so the saved space takes effect. This only happens on the first boot. Leave the USB stick plugged in and wait; LinuxTV opens after the restart.
+
+## First-Time Setup Needs a Keyboard and Mouse
+
+The first time LinuxTV starts, your phone can't control it yet. Plug in a USB keyboard and mouse once to:
+
+1. Connect to Wi-Fi (Settings > Network). Skip this if you use a network cable.
+2. Note the IP address shown in the top bar, then enter it in the LinuxTV Remote app on your phone (same Wi-Fi). If a pairing code is requested, it is under Settings > Remote Control.
+
+After that your phone does everything and the keyboard and mouse can be put away.
+
+## Make the USB Stick Boot Automatically
+
+So LinuxTV starts every time you turn the computer on, set the USB stick as the default (first) boot device:
+
+1. Start the computer and press the BIOS/UEFI key as it powers on (usually F2, F10, F12 or Del).
+2. Open the **Boot** section (sometimes called Boot Order or Boot Priority).
+3. Move your USB stick (shown as "USB HDD", "USB Storage" or the stick's brand name) to the top.
+4. Save and exit (usually F10).
+
+Keep the USB stick plugged in. If it is ever removed, the computer simply starts its normal system instead.
 
 ## Troubleshooting: USB Not Showing in BIOS/UEFI
 

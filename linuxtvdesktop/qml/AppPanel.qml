@@ -20,6 +20,7 @@ Item {
         case "brightness": return "Brightness"
         case "remoteLogin": return "Remote Login"
         case "autoOpen": return "Auto-Open"
+        case "store": return "App Store"
         default: return ""
         }
     }
@@ -34,6 +35,7 @@ Item {
         case "brightness": return "BrightnessPanel.qml"
         case "remoteLogin": return "RemoteLoginPanel.qml"
         case "autoOpen": return "AutoOpenPanel.qml"
+        case "store": return "StorePanel.qml"
         default: return ""
         }
     }

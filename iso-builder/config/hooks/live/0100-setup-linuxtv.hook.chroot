@@ -6,8 +6,27 @@ LINUXTV_USER="linuxtv"
 
 if ! id -u "$LINUXTV_USER" >/dev/null 2>&1; then
   useradd -m -s /bin/bash -G sudo,video,audio,input,plugdev,netdev "$LINUXTV_USER"
-  echo "${LINUXTV_USER}:linuxtv" | chpasswd
 fi
+
+# No shipped password: lock the account so there are no default credentials.
+# Autologin (agetty --autologin) does not need a password, so the couch
+# experience is unaffected. Admins who want interactive login/sudo can set a
+# password after first boot (e.g. from a root shell: `passwd linuxtv`).
+passwd -l "$LINUXTV_USER"
+
+# Scoped NOPASSWD sudo so the in-app "system update" button keeps working with
+# no stored secret. Limited to apt update/upgrade only -- not general sudo.
+cat > /etc/sudoers.d/linuxtv-update <<'SUDOERS'
+linuxtv ALL=(root) NOPASSWD: /usr/bin/apt update, /usr/bin/apt upgrade -y, /usr/bin/apt-get update, /usr/bin/apt-get upgrade -y, /usr/local/sbin/linuxtv-store install *
+SUDOERS
+chmod 0440 /etc/sudoers.d/linuxtv-update
+visudo -cf /etc/sudoers.d/linuxtv-update
+
+# App store helper + catalog: must be root-owned and not writable by linuxtv,
+# since the helper runs as root via sudo and only installs catalog packages.
+chown root:root /usr/local/sbin/linuxtv-store /etc/linuxtv/store-catalog.json
+chmod 0755 /usr/local/sbin/linuxtv-store
+chmod 0644 /etc/linuxtv/store-catalog.json
 
 # Add user to backlight group for brightness control (if group exists)
 groupadd -f backlight 2>/dev/null || true
