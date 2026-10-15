@@ -19,7 +19,7 @@ from pathlib import Path
 
 try:
     import tkinter as tk
-    from tkinter import ttk, messagebox, filedialog
+    from tkinter import messagebox, filedialog
     from tkinter import font as tkfont
 except ImportError:
     print("Error: tkinter is required. Please install python3-tk package.")

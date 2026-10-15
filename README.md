@@ -1,4 +1,7 @@
-# LinuxTV
+<div align="center">
+  <img src="iso-builder/assets/icon-256.png" alt="LinuxTV logo" width="160" />
+  <h1>LinuxTV</h1>
+</div>
 
 LinuxTV turns any computer into a simple TV box. Plug the computer into your TV, start it from a USB stick, and you get one big, easy screen with your favorite apps and websites (YouTube, Netflix, Kodi, VLC and more). You control everything from your phone, like a remote control. No keyboard, no mouse, no setup headaches.
 

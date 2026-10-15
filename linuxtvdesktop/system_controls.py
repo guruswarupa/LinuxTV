@@ -1,7 +1,6 @@
 """Shell-outs to the OS: audio, brightness, power, updates, window fullscreening."""
 
 import logging
-import os
 import shlex
 import shutil
 import subprocess
@@ -569,12 +568,12 @@ def request_system_update():
                 subprocess.Popen([terminal, "--", "bash", "-c", f"{update_command}; echo 'Update complete. Press Enter to close.'; read"])
             else:
                 subprocess.Popen([terminal, "-e", f"bash -c '{update_command}; echo Update complete. Press Enter to close.; read'"])
-            logging.info("Triggered system update in terminal (user: %s)", current_user)
+            logging.info("Triggered system update in terminal")
             return True, "System update started in terminal"
         else:
             # No terminal available, run silently
             subprocess.Popen(["bash", "-c", update_command])
-            logging.info("Triggered system update (no terminal available, user: %s)", current_user)
+            logging.info("Triggered system update (no terminal available)")
             return True, "System update started (check terminal for progress)"
     except Exception as e:
         logging.exception("Failed to trigger system update")
