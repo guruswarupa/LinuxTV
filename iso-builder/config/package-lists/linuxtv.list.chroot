@@ -38,6 +38,7 @@ python3-evdev
 pulseaudio
 pulseaudio-utils
 pulseaudio-module-bluetooth
+alsa-utils
 
 # Window management tools
 wmctrl
@@ -101,3 +102,4 @@ firmware-realtek
 firmware-atheros
 firmware-amd-graphics
 firmware-misc-nonfree
+firmware-sof-signed

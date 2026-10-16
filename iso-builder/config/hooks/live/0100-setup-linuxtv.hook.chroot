@@ -166,13 +166,19 @@ if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
   clear >/dev/null 2>&1 || true
   printf '\033[3J' >/dev/null 2>&1 || true
   
-  STARTUP_COUNT=${STARTUP_COUNT:-0}
-  export STARTUP_COUNT=$((STARTUP_COUNT + 1))
-  if [ $STARTUP_COUNT -gt 3 ]; then
+  # Each failed X session logs out and agetty autologins again, so the counter
+  # has to live in /tmp (a shell variable resets on every login).
+  COUNT_FILE=/tmp/.linuxtv_startx_count
+  STARTUP_COUNT=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+  STARTUP_COUNT=$((STARTUP_COUNT + 1))
+  echo "$STARTUP_COUNT" > "$COUNT_FILE"
+  if [ "$STARTUP_COUNT" -gt 3 ]; then
     echo "LinuxTV startup failed multiple times."
-    echo "Debug: cat /tmp/linuxtv_startup.log"
+    echo "Launcher log: cat /tmp/linuxtv_startup.log"
+    echo "X log:        cat /tmp/startx.log ~/.local/share/xorg/Xorg.0.log"
   else
-    exec startx >/dev/null 2>&1
+    startx >/tmp/startx.log 2>&1
+    exit
   fi
 fi
 PROFILE

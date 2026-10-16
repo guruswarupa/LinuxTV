@@ -426,9 +426,13 @@ def patch_mbr_persistence(sector0, total_bytes):
         return None                       # protective MBR: GPT disk
     if entries[2][0] != 0 or entries[3][0] != 0:
         return None                       # partition 3/4 already in use
-    if entries[0][0] == 0 and entries[1][0] == 0:
+    if all(n == 0 for _, _, n in entries):
         return None
-    last_end = max(s + n for t, s, n in entries if t != 0)
+    # Count every populated entry, whatever its type: the hybrid ISO's own
+    # partition 1 is type 0x00 yet covers the whole image, so skipping "empty"
+    # types would start the persistence partition inside the ISO and the
+    # first-boot format would destroy it.
+    last_end = max(s + n for _, s, n in entries)
     new_start = ((last_end + 2047) // 2048) * 2048
     total_sectors = min(total_bytes // 512, 0xFFFFFFFF)
     new_size = total_sectors - new_start
