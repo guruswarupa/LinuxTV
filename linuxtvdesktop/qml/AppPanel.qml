@@ -10,6 +10,10 @@ Item {
     opacity: backend.activePanel !== "" ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: 150 } }
 
+    // The app store is a browsing screen, not a small form: it takes the whole
+    // window instead of the centered card the other panels use.
+    readonly property bool fullscreen: backend.activePanel === "store"
+
     function titleFor(name) {
         switch (name) {
         case "addApp": case "editApp": return backend.panelData.title || "Add App"
@@ -48,17 +52,17 @@ Item {
 
     Rectangle {
         id: card
-        width: Math.min(560, parent.width - 80)
-        height: Math.min(contentColumn.implicitHeight + 48, parent.height - 80)
+        width: root.fullscreen ? parent.width : Math.min(560, parent.width - 80)
+        height: root.fullscreen ? parent.height : Math.min(contentColumn.implicitHeight + 48, parent.height - 80)
         anchors.centerIn: parent
-        radius: 16
+        radius: root.fullscreen ? 0 : 16
         color: theme.surface
         clip: true
 
         Flickable {
             id: flick
             anchors.fill: parent
-            anchors.margins: 24
+            anchors.margins: root.fullscreen ? 40 : 24
             contentWidth: width
             contentHeight: contentColumn.implicitHeight
             clip: true
@@ -70,6 +74,7 @@ Item {
                 spacing: 16
 
                 Text {
+                    id: titleText
                     width: parent.width
                     text: root.titleFor(backend.activePanel)
                     color: theme.text
@@ -82,11 +87,17 @@ Item {
                 Loader {
                     id: bodyLoader
                     width: parent.width
+                    // Fullscreen panels get all the room left under the title and status line.
+                    height: root.fullscreen
+                        ? Math.max(200, flick.height - titleText.height - statusText.height - contentColumn.spacing * 2)
+                        : (item ? item.implicitHeight : 0)
                     source: root.visible ? root.sourceFor(backend.activePanel) : ""
                 }
 
                 Text {
+                    id: statusText
                     width: parent.width
+                    height: visible ? implicitHeight : 0
                     visible: (backend.panelData.status || "") !== ""
                     text: backend.panelData.status || ""
                     color: theme.text_muted

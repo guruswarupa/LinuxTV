@@ -550,7 +550,7 @@ def request_system_update():
     
     try:
         # Use a terminal emulator if available
-        terminal_emulators = ["gnome-terminal", "x-terminal-emulator", "xterm", "konsole"]
+        terminal_emulators = ["kitty", "gnome-terminal", "x-terminal-emulator", "xterm", "konsole"]
         terminal = None
         for term in terminal_emulators:
             if shutil.which(term):
@@ -567,7 +567,9 @@ def request_system_update():
             if terminal == "gnome-terminal":
                 subprocess.Popen([terminal, "--", "bash", "-c", f"{update_command}; echo 'Update complete. Press Enter to close.'; read"])
             else:
-                subprocess.Popen([terminal, "-e", f"bash -c '{update_command}; echo Update complete. Press Enter to close.; read'"])
+                # -e takes the program and its arguments as separate argv entries
+                # (kitty treats one quoted string as a program name and fails).
+                subprocess.Popen([terminal, "-e", "bash", "-c", f"{update_command}; echo 'Update complete. Press Enter to close.'; read"])
             logging.info("Triggered system update in terminal")
             return True, "System update started in terminal"
         else:

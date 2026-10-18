@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="iso-builder/assets/icon-256.png" alt="LinuxTV logo" width="160" />
+  <img src="iso-builder/config/includes.chroot/usr/share/plymouth/themes/linuxtv/splash.png" alt="LinuxTV logo" width="160" />
   <h1>LinuxTV</h1>
 </div>
 

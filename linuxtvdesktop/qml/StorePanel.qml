@@ -5,17 +5,20 @@ Column {
     spacing: 12
 
     Text {
+        id: introText
         width: parent.width
         text: "Install media apps from the LinuxTV catalog."
         color: theme.text_muted
         font.family: theme.font_family
-        font.pixelSize: 13
+        font.pixelSize: 16
         wrapMode: Text.WordWrap
     }
 
     Rectangle {
         width: parent.width
-        height: Math.min(300, Math.max(60, listView.contentHeight))
+        // The panel is full screen: the list takes everything between the intro
+        // text and the Close button.
+        height: Math.max(120, root.height - introText.height - closeButton.height - root.spacing * 2)
         radius: 8
         color: theme.surface_alt
         clip: true
@@ -26,7 +29,7 @@ Column {
             model: backend.panelData.apps || []
             delegate: Rectangle {
                 width: listView.width
-                height: 56
+                height: 72
                 color: "transparent"
 
                 Column {
@@ -41,7 +44,7 @@ Column {
                         text: modelData.name
                         color: theme.text
                         font.family: theme.font_family
-                        font.pixelSize: 14
+                        font.pixelSize: 18
                         font.bold: true
                     }
                     Text {
@@ -50,7 +53,7 @@ Column {
                         text: modelData.description
                         color: theme.text_muted
                         font.family: theme.font_family
-                        font.pixelSize: 12
+                        font.pixelSize: 15
                     }
                 }
 
@@ -69,7 +72,7 @@ Column {
                         text: modelData.installed ? "Installed" : "Install"
                         color: modelData.installed ? theme.text_muted : "white"
                         font.family: theme.font_family
-                        font.pixelSize: 13
+                        font.pixelSize: 16
                         font.bold: !modelData.installed
                     }
                     MouseArea {
@@ -91,6 +94,7 @@ Column {
     }
 
     Rectangle {
+        id: closeButton
         width: 90
         height: 38
         radius: 8
